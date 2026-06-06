@@ -13,6 +13,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _loginStatus = MutableStateFlow<String?>(null)
     val loginStatus = _loginStatus.asStateFlow()
+    private val _signUpStatus = MutableStateFlow<String?>(null)
+    val signUpStatus = _signUpStatus.asStateFlow()
+
 
     fun signIn(email: String, password: String) {
         viewModelScope.launch {
@@ -21,6 +24,16 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 _loginStatus.value = "Berhasil Login!"
             } else {
                 _loginStatus.value = "Gagal: ${result.exceptionOrNull()?.message}"
+            }
+        }
+    }
+    fun signUp(name: String, email: String, password: String) {
+        viewModelScope.launch {
+            val result = repository.signUp(name, email, password)
+            if (result.isSuccess) {
+                _signUpStatus.value = "Akun berhasil dibuat!"
+            } else {
+                _signUpStatus.value = "Gagal: ${result.exceptionOrNull()?.message}"
             }
         }
     }

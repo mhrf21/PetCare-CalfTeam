@@ -26,6 +26,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.calfteam.petcare.viewmodel.AuthViewModel
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.clickable
 
 // Warna kustom
 //val TealColor = Color(0xFF0B7B7D)
@@ -34,13 +43,17 @@ val LightGrayBg = Color(0xFFF5F5F5)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SignUpScreen() {
+fun SignUpScreen(viewModel: AuthViewModel = viewModel()) {
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var selectedRole by remember { mutableStateOf("Adopter") } // State untuk tombol
-
+    val context = LocalContext.current
+    val signUpStatus by viewModel.signUpStatus.collectAsState()
+    LaunchedEffect(signUpStatus) {
+        signUpStatus?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -188,12 +201,13 @@ fun SignUpScreen() {
 
         // --- SIGN UP BUTTON ---
         Button(
-            onClick = { /* Nanti kita isi logika Register Appwrite di sini */ },
+            onClick = { viewModel.signUp(fullName, email, password) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = TealColor)
+
         ) {
             Text(text = "Sign Up", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
@@ -205,14 +219,19 @@ fun SignUpScreen() {
             modifier = Modifier.padding(bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val context = LocalContext.current // Penting untuk navigasi
+
             Text(text = "Already have an account? ", color = Color.Gray, fontSize = 14.sp)
             Text(
                 text = "Sign In",
-                color = TealColor, // Warnanya teal sesuai gambar
+                color = TealColor,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
                 modifier = Modifier.clickable {
-                    // Nanti diisi logika untuk kembali ke halaman Login
+                    // Pindah balik ke LoginActivity
+                    val intent = Intent(context, LoginActivity::class.java)
+                    context.startActivity(intent)
+                    // Optional: tambahkan finish() agar user tidak bisa balik lagi ke screen ini saat tekan tombol back
                 }
             )
         }

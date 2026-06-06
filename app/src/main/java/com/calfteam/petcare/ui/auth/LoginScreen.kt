@@ -28,7 +28,8 @@ import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.calfteam.petcare.viewmodel.AuthViewModel
-
+import android.content.Intent
+import androidx.compose.foundation.clickable
 val TealColor = Color(0xFF0B7B7D)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,24 +57,7 @@ fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // --- LOGO & TITLE ---
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Pets,
-                contentDescription = "App Logo",
-                tint = TealColor,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "PetCare", // Sudah diganti sesuai nama aplikasi
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = TealColor
-            )
-        }
+
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -198,7 +182,12 @@ fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
                 text = "Sign Up",
                 color = Color(0xFFB06A26),
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                modifier = Modifier.clickable { // Tambahkan modifier ini
+                    // Ganti SignUpActivity::class.java dengan nama Activity tujuan lu
+                    val intent = Intent(context, SignUpActivity::class.java)
+                    context.startActivity(intent)
+                }
             )
         }
     }
