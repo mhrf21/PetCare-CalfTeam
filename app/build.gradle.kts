@@ -55,5 +55,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation("androidx.compose.material:material-icons-extended")
     implementation("io.appwrite:sdk-for-android:5.1.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1") // atau versi terbaru
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
+    implementation("io.coil-kt:coil-compose:2.4.0")
 }

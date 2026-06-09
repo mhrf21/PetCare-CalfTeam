@@ -4,6 +4,9 @@ import android.content.Context
 import com.calfteam.petcare.utils.AppwriteConfig
 import io.appwrite.Client
 import io.appwrite.services.Account
+import io.appwrite.services.Storage
+import io.appwrite.models.InputFile
+import java.io.File
 
 class AuthRepository(context: Context) {
 
@@ -54,4 +57,6 @@ class AuthRepository(context: Context) {
             Result.failure(e)
         }
     }
+
 }
+

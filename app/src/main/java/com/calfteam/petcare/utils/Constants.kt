@@ -12,4 +12,10 @@ object Constants {
 
     // ID Bucket Storage
     const val BUCKET_PET_IMAGES_ID = "6a247a4500163366f70a"
+
+    // Generate image URL dari Appwrite Storage
+// Di Constants.kt
+    fun getImageUrl(fileId: String): String {
+        return "$APPWRITE_ENDPOINT/storage/buckets/$BUCKET_PET_IMAGES_ID/files/$fileId/view?project=$PROJECT_ID"
+    }
 }

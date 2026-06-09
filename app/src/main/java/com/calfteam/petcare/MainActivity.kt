@@ -3,9 +3,12 @@ package com.calfteam.petcare
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -27,7 +30,14 @@ import com.calfteam.petcare.data.repository.AuthRepository
 import com.calfteam.petcare.ui.auth.LoginActivity
 import kotlinx.coroutines.launch
 import com.calfteam.petcare.data.model.Pet
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import com.calfteam.petcare.utils.AppwriteConfig
+import com.calfteam.petcare.data.repository.PetRepository
+import com.calfteam.petcare.utils.Constants // Pastikan ini juga diimport
 
+// Nanti di onClick tinggal pakai petRepo.uploadPetImage(file)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,14 +51,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Taruh ini di luar class MainActivity / di atas fungsi MainScreenUI
-val dummyPets = listOf(
-    Pet("1", "Luna", "French Bulldog", "2 years", "Available", "2.4 miles", "", listOf("Vaccinated", "Friendly")),
-    Pet("2", "Milo", "Maine Coon", "4 years", "Missing", "Today", "", lastSeen = "Last seen near Green Hills Park."),
-    Pet("3", "Cooper", "Golden Retriever", "5 months", "Available", "5.1 miles", "", listOf("Needs Garden")),
-    Pet("4", "Bella", "Pomeranian", "6 years", "Missing", "2 days ago", "", lastSeen = "Reward offered. Has blue collar.")
-)
-
+// PetCard Composable
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PetCard(pet: Pet, onClick: () -> Unit) {
@@ -70,8 +73,21 @@ fun PetCard(pet: Pet, onClick: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(140.dp)
-                    .background(Color.LightGray) // Placeholder sebelum ditarik dari storage
+                    .background(Color.LightGray),
+                contentAlignment = Alignment.Center
             ) {
+                // Tampilkan gambar dari Appwrite Storage
+                if (pet.imageUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = pet.imageUrl,
+                        contentDescription = pet.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(Icons.Filled.ImageNotSupported, contentDescription = "No image", tint = Color.Gray)
+                }
+
                 // Teks status di pojok kanan atas
                 Box(
                     modifier = Modifier
@@ -154,21 +170,43 @@ fun MainScreenUI(userName: String) {
     val coroutineScope = rememberCoroutineScope()
     val repository = remember { AuthRepository(context) }
 
-
-    var petName by remember { mutableStateOf("") }
-    var petBreed by remember { mutableStateOf("") }
-    var petAge by remember { mutableStateOf("") }
-    var petStatus by remember { mutableStateOf("Available") } // Default Available
-    var petLastSeen by remember { mutableStateOf("") }
-    var petTagsText by remember { mutableStateOf("") } // Pisah pakai koma, misal: Vaccinated, Friendly
     var selectedItem by remember { mutableStateOf(0) }
     var searchText by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All Pets") }
+    val client = remember { AppwriteConfig.getClient(context) }
+    val authRepository = remember { AuthRepository(context) }
+    val petRepository = remember { PetRepository(client) }
+
+    // State untuk menyimpan pets dari database
+    var petsList by remember { mutableStateOf<List<Pet>>(emptyList()) }
+    var isLoadingPets by remember { mutableStateOf(false) }
+
+    // Fetch pets saat screen pertama kali ditampilkan atau saat kembali ke Home
+    LaunchedEffect(selectedItem) {
+        if (selectedItem == 0) { // Home screen
+            isLoadingPets = true
+            petRepository.getAllPets().onSuccess { pets ->
+                petsList = pets
+                isLoadingPets = false
+            }.onFailure { error ->
+                Toast.makeText(context, "Gagal load data: ${error.message}", Toast.LENGTH_SHORT).show()
+                isLoadingPets = false
+            }
+        }
+    }
 
     val bottomNavItems = listOf("Home", "Search", "Post", "Profile")
     val bottomNavIcons = listOf(Icons.Filled.Home, Icons.Filled.Search, Icons.Filled.AddCircle, Icons.Filled.Person)
     val categories = listOf("🐾 All Pets", "🐶 Dogs", "🐱 Cats", "🚨 Missing")
 
+    var selectedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
+// Launcher Galeri
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        selectedImageUri = uri
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -297,17 +335,35 @@ fun MainScreenUI(userName: String) {
                         color = Color.Black
                     )
 
-                    // TODO: Grid List Hewan akan kita taruh di sini nanti
-                    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                        columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(dummyPets.size) { index ->
-                            val pet = dummyPets[index]
-                            PetCard(pet = pet, onClick = {
-                                Toast.makeText(context, "Membuka profil ${pet.name}", Toast.LENGTH_SHORT).show()
-                            })
+                    // Grid List Hewan dari Database
+                    if (isLoadingPets) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Color(0xFF00666E))
+                        }
+                    } else if (petsList.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Belum ada listing hewan", color = Color.Gray)
+                        }
+                    } else {
+                        androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                            columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(2),
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                            contentPadding = PaddingValues(bottom = 16.dp)
+                        ) {
+                            items(petsList.size) { index ->
+                                val pet = petsList[index]
+                                PetCard(pet = pet, onClick = {
+                                    Toast.makeText(context, "Membuka profil ${pet.name}", Toast.LENGTH_SHORT).show()
+                                })
+                            }
                         }
                     }
                 }
@@ -318,6 +374,9 @@ fun MainScreenUI(userName: String) {
                 var petBreed by remember { mutableStateOf("") }
                 var petAge by remember { mutableStateOf("") }
                 var petDescription by remember { mutableStateOf("") }
+                var petTagsText by remember { mutableStateOf("") }
+                var petContact by remember { mutableStateOf("") }
+                var petLocation by remember { mutableStateOf("") }
 
                 Column(
                     modifier = Modifier
@@ -330,41 +389,29 @@ fun MainScreenUI(userName: String) {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // --- BAGIAN 1: FOTO HEWAN ---
+
                     Text("Pet Photos", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.Black)
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        // Tombol Add Photo
-                        Box(
-                            modifier = Modifier
-                                .size(100.dp)
-                                .background(Color(0xFFFAFAFA), RoundedCornerShape(12.dp))
-                                // .border(1.dp, Color.Gray, RoundedCornerShape(12.dp)) // Bisa diganti dashed border nanti
-                                .padding(8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Filled.AddPhotoAlternate, contentDescription = "Add", tint = Color.Gray)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("Add Photo", fontSize = 12.sp, color = Color.Gray)
-                            }
-                        }
 
-                        // Dummy Foto yang sudah diupload (Sesuai mockup)
-                        Box(
-                            modifier = Modifier
-                                .size(100.dp)
-                                .background(Color.LightGray, RoundedCornerShape(12.dp))
-                        ) {
-                            // TODO: Nanti ganti pakai AsyncImage kalau udah ada URL fotonya
-                            Icon(
-                                Icons.Filled.Cancel,
-                                contentDescription = "Remove",
-                                tint = Color(0xFFBA1A1A),
-                                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).size(20.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .background(Color(0xFFFAFAFA), RoundedCornerShape(12.dp))
+                            .clickable { galleryLauncher.launch("image/*") }, // Buka galeri pas diklik
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selectedImageUri != null) {
+                            // Tampilkan gambar yang dipilih
+                            AsyncImage(
+                                model = selectedImageUri,
+                                contentDescription = "Selected Pet Image",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
                             )
+                        } else {
+                            Icon(Icons.Filled.AddPhotoAlternate, contentDescription = "Add", tint = Color.Gray)
                         }
                     }
-
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // --- BAGIAN 2: LISTING TYPE ---
@@ -460,11 +507,124 @@ fun MainScreenUI(userName: String) {
                         shape = RoundedCornerShape(12.dp)
                     )
 
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Tags (Optional - pisah dengan koma)", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    OutlinedTextField(
+                        value = petTagsText,
+                        onValueChange = { petTagsText = it },
+                        placeholder = { Text("e.g. Vaccinated, Friendly, Needs Garden") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Contact Info", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    OutlinedTextField(
+                        value = petContact,
+                        onValueChange = { petContact = it },
+                        placeholder = { Text("e.g. +62 812 3456 7890 or email@example.com") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Location", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    OutlinedTextField(
+                        value = petLocation,
+                        onValueChange = { petLocation = it },
+                        placeholder = { Text("e.g. Jakarta Pusat, Kota Tua") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // --- BAGIAN 4: SUBMIT ---
                     Button(
-                        onClick = { /* TODO: Submit ke Appwrite */ },
+                        onClick = {
+                            coroutineScope.launch {
+                                selectedImageUri?.let { uri ->
+                                    try {
+                                        // Validasi input
+                                        if (petName.isBlank()) {
+                                            Toast.makeText(context, "Nama hewan wajib diisi!", Toast.LENGTH_SHORT).show()
+                                            return@launch
+                                        }
+                                        if (petBreed.isBlank()) {
+                                            Toast.makeText(context, "Breed wajib diisi!", Toast.LENGTH_SHORT).show()
+                                            return@launch
+                                        }
+                                        if (petAge.isBlank()) {
+                                            Toast.makeText(context, "Umur wajib diisi!", Toast.LENGTH_SHORT).show()
+                                            return@launch
+                                        }
+                                        if (petContact.isBlank()) {
+                                            Toast.makeText(context, "Kontak wajib diisi!", Toast.LENGTH_SHORT).show()
+                                            return@launch
+                                        }
+                                        if (petLocation.isBlank()) {
+                                            Toast.makeText(context, "Lokasi wajib diisi!", Toast.LENGTH_SHORT).show()
+                                            return@launch
+                                        }
+
+                                        // 1. Convert URI ke File
+                                        val file = petRepository.uriToFile(context, uri)
+
+                                        // 2. Upload gambar
+                                        val uploadResult = petRepository.uploadPetImage(file)
+
+                                        uploadResult.onSuccess { fileId ->
+                                            // 3. Simpan ke database
+                                            val tagsList = petTagsText
+                                                .split(",")
+                                                .map { it.trim() }
+                                                .filter { it.isNotEmpty() }
+                                            
+                                            val dbResult = petRepository.savePetPost(
+                                                name = petName,
+                                                breed = petBreed,
+                                                age = petAge,
+                                                desc = petDescription,
+                                                type = listingType,
+                                                fileId = fileId,
+                                                tags = tagsList,
+                                                contact = petContact,
+                                                location = petLocation
+                                            )
+
+                                            dbResult.onSuccess {
+                                                Toast.makeText(context, "Postingan berhasil dibuat!", Toast.LENGTH_LONG).show()
+                                                // Reset form
+                                                petName = ""
+                                                petBreed = ""
+                                                petAge = ""
+                                                petDescription = ""
+                                                petTagsText = ""
+                                                petContact = ""
+                                                petLocation = ""
+                                                selectedImageUri = null
+                                                listingType = "Adoption"
+                                                selectedItem = 0 // Kembali ke Home
+                                            }.onFailure { error ->
+                                                Toast.makeText(context, "Gagal simpan: ${error.message ?: "Error tidak diketahui"}", Toast.LENGTH_LONG).show()
+                                                android.util.Log.e("PostError", "DB Error: ${error.stackTraceToString()}")
+                                            }
+                                        }.onFailure { error ->
+                                            Toast.makeText(context, "Gagal upload gambar: ${error.message ?: "Error tidak diketahui"}", Toast.LENGTH_LONG).show()
+                                            android.util.Log.e("PostError", "Upload Error: ${error.stackTraceToString()}")
+                                        }
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                                        android.util.Log.e("PostError", "Catch Error: ${e.stackTraceToString()}")
+                                    }
+                                } ?: Toast.makeText(context, "Mohon pilih foto terlebih dahulu", Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00666E)),
                         shape = RoundedCornerShape(8.dp)
@@ -473,15 +633,6 @@ fun MainScreenUI(userName: String) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(Icons.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "By posting, you agree to our Community Guidelines.",
-                        fontSize = 10.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    )
 
                     Spacer(modifier = Modifier.height(32.dp))
                 }
