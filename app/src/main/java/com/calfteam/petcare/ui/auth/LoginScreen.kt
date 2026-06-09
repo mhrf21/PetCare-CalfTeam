@@ -1,21 +1,22 @@
 package com.calfteam.petcare.ui.auth
 
-import androidx.compose.foundation.BorderStroke
+import android.app.Activity
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.Pets
-import androidx.compose.material.icons.rounded.VolunteerActivism
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -24,12 +25,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.calfteam.petcare.MainActivity
 import com.calfteam.petcare.viewmodel.AuthViewModel
-import android.content.Intent
-import androidx.compose.foundation.clickable
+
 val TealColor = Color(0xFF0B7B7D)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,14 +37,31 @@ fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var selectedRole by remember { mutableStateOf("Adopter") }
 
-    val context = LocalContext.current // Untuk memunculkan Toast
-    val loginStatus by viewModel.loginStatus.collectAsState() // Mendengarkan status login
+    val context = LocalContext.current
+    val loginStatus by viewModel.loginStatus.collectAsState()
+
+    // Pengecekan otomatis saat aplikasi dibuka
+    LaunchedEffect(Unit) {
+        viewModel.checkActiveSession()
+    }
 
     LaunchedEffect(loginStatus) {
-        loginStatus?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+        loginStatus?.let { status ->
+            if (status.startsWith("Success:")) {
+                // Di AuthRepository baru, ini bakal nangkep NAMA USER (contoh: "Alex Johnson")
+                val userName = status.substringAfter("Success:")
+                Toast.makeText(context, "Selamat datang kembali, $userName!", Toast.LENGTH_SHORT).show()
+
+                // Langsung arahkan ke MainActivity dan bawa data nama user
+                val intent = Intent(context, MainActivity::class.java).apply {
+                    putExtra("userName", userName) // Ganti key dari "role" jadi "userName"
+                }
+                context.startActivity(intent)
+                (context as? Activity)?.finish()
+            } else {
+                Toast.makeText(context, status, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -56,12 +72,9 @@ fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
             .padding(horizontal = 24.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // --- LOGO & TITLE ---
-
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // --- WELCOME TEXT ---
         Text(
             text = "Welcome Back",
             fontSize = 28.sp,
@@ -78,36 +91,12 @@ fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // --- ROLE SELECTION (Adopter / Donor) ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            RoleButton(
-                modifier = Modifier.weight(1f),
-                text = "Adopter",
-                icon = Icons.Rounded.FavoriteBorder,
-                isSelected = selectedRole == "Adopter",
-                onClick = { selectedRole = "Adopter" }
-            )
-            RoleButton(
-                modifier = Modifier.weight(1f),
-                text = "Donor",
-                icon = Icons.Rounded.VolunteerActivism,
-                isSelected = selectedRole == "Donor",
-                onClick = { selectedRole = "Donor" }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // --- EMAIL INPUT ---
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Email Address") },
-            placeholder = { Text("hello@petcare.com") }, // Placeholder ikut disesuaikan
+            placeholder = { Text("hello@petcare.com") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -120,7 +109,6 @@ fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- PASSWORD INPUT ---
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
@@ -155,10 +143,8 @@ fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // --- SIGN IN BUTTON ---
         Button(
             onClick = {
-                // Panggil logika login dari ViewModel
                 viewModel.signIn(email, password)
             },
             modifier = Modifier
@@ -172,7 +158,6 @@ fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // --- SIGN UP LINK ---
         Row(
             modifier = Modifier.padding(bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -183,44 +168,11 @@ fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
                 color = Color(0xFFB06A26),
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                modifier = Modifier.clickable { // Tambahkan modifier ini
-                    // Ganti SignUpActivity::class.java dengan nama Activity tujuan lu
+                modifier = Modifier.clickable {
                     val intent = Intent(context, SignUpActivity::class.java)
                     context.startActivity(intent)
                 }
             )
-        }
-    }
-}
-
-@Composable
-fun RoleButton(
-    modifier: Modifier = Modifier,
-    text: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val backgroundColor = if (isSelected) TealColor else Color.White
-    val contentColor = if (isSelected) Color.White else TealColor
-
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.height(80.dp),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, if (isSelected) TealColor else Color.LightGray),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = backgroundColor,
-            contentColor = contentColor
-        )
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(imageVector = icon, contentDescription = text, modifier = Modifier.size(24.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = text, fontWeight = FontWeight.SemiBold)
         }
     }
 }
