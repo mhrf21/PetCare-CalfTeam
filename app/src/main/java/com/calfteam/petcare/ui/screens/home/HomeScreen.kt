@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,34 +24,108 @@ import com.calfteam.petcare.data.model.Pet
 import com.calfteam.petcare.data.repository.PetRepository
 import com.calfteam.petcare.ui.components.PetCard
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(petRepository: PetRepository) {
     val context = LocalContext.current
+    var petsList by remember { mutableStateOf<List<Pet>>(emptyList()) }
+    var isLoadingPets by remember { mutableStateOf(true) }
+
+    // State untuk Filter & Search
     var searchText by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All Pets") }
-    var petsList by remember { mutableStateOf<List<Pet>>(emptyList()) }
-    var isLoadingPets by remember { mutableStateOf(false) }
-    val categories = listOf("🐾 All Pets", "🐶 Dogs", "🐱 Cats", "🚨 Missing")
+    val categories = listOf("All Pets", "Adoption", "Missing") // Disesuaikan dengan status di database lu
 
-    // Fetch pets saat screen pertama kali ditampilkan
+    // Fetch pets saat screen dibuka
     LaunchedEffect(Unit) {
         isLoadingPets = true
         petRepository.getAllPets().onSuccess { pets ->
             petsList = pets
             isLoadingPets = false
         }.onFailure { error ->
-            Toast.makeText(context, "Gagal load data: ${error.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Error load data: ${error.message}", Toast.LENGTH_SHORT).show()
             isLoadingPets = false
         }
     }
 
-    // Pindahkan isi dari `0 -> { ... }` (Home Feed) di MainActivity lu ke sini.
+    // Filter logika (Gabungan Search text & Kategori)
+    val filteredPets = petsList.filter { pet ->
+        val matchesSearch = pet.name.contains(searchText, ignoreCase = true) ||
+                pet.breed.contains(searchText, ignoreCase = true)
+        val matchesCategory = if (selectedCategory == "All Pets") true else pet.status.equals(selectedCategory, ignoreCase = true)
+
+        matchesSearch && matchesCategory
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFFBF9F8))
+            .padding(horizontal = 16.dp)
     ) {
-        // Urgent Banner, Search Bar, Filter Chips... (Copy paste dari MainActivity)
-        // LazyVerticalGrid untuk nampilin petsList...
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 1. Search Bar
+        OutlinedTextField(
+            value = searchText,
+            onValueChange = { searchText = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search for breeds, names...") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
+                focusedBorderColor = Color(0xFF00666E),
+                unfocusedBorderColor = Color.LightGray
+            ),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. Filter Chips
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(categories) { category ->
+                FilterChip(
+                    selected = selectedCategory == category,
+                    onClick = { selectedCategory = category },
+                    label = { Text(category) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = Color(0xFF00666E),
+                        selectedLabelColor = Color.White,
+                        containerColor = Color.White,
+                        labelColor = Color.Gray
+                    )
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 3. Grid Daftar Hewan
+        if (isLoadingPets) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Color(0xFF00666E))
+            }
+        } else if (filteredPets.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Tidak ada hewan yang ditemukan 🐾", color = Color.Gray)
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 80.dp) // Spasi bawah untuk Bottom Navigation
+            ) {
+                items(filteredPets) { pet ->
+                    PetCard(pet = pet)
+                }
+            }
+        }
     }
 }
