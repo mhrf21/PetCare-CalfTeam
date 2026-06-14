@@ -26,7 +26,7 @@ import com.calfteam.petcare.ui.components.PetCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(petRepository: PetRepository) {
+fun HomeScreen(petRepository: PetRepository, onPetSelected: (Pet) -> Unit) {
     val context = LocalContext.current
     var petsList by remember { mutableStateOf<List<Pet>>(emptyList()) }
     var isLoadingPets by remember { mutableStateOf(true) }
@@ -120,10 +120,13 @@ fun HomeScreen(petRepository: PetRepository) {
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 80.dp) // Spasi bawah untuk Bottom Navigation
+                contentPadding = PaddingValues(bottom = 80.dp)
             ) {
                 items(filteredPets) { pet ->
-                    PetCard(pet = pet)
+                    PetCard(
+                        pet = pet,
+                        onClick = { onPetSelected(pet) } // TAMBAHKAN INI BIAR BISA DIKLIK
+                    )
                 }
             }
         }
