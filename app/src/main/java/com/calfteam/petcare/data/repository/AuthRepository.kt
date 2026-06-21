@@ -4,10 +4,7 @@ import android.content.Context
 import com.calfteam.petcare.utils.AppwriteConfig
 import io.appwrite.Client
 import io.appwrite.services.Account
-import io.appwrite.services.Storage
-import io.appwrite.models.InputFile
-import java.io.File
-
+import io.appwrite.models.User
 class AuthRepository(context: Context) {
 
     private val client: Client = AppwriteConfig.getClient(context)
@@ -57,6 +54,12 @@ class AuthRepository(context: Context) {
             Result.failure(e)
         }
     }
-
+    suspend fun getCurrentUser(): io.appwrite.models.User<Map<String, Any>>? {
+        return try {
+            account.get()
+        } catch (e: Exception) {
+            null
+        }
+    }
 }
 

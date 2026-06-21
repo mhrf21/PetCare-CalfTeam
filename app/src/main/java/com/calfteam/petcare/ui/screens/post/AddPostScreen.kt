@@ -31,8 +31,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun AddPostScreen(
     petRepository: PetRepository,
+    userName: String,
+    userId: String,
     onNavigateToHome: () -> Unit
 ) {
+    // ... biarin isi di bawahnya tetap sama dulu
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -123,7 +126,9 @@ fun AddPostScreen(
             value = description,
             onValueChange = { description = it },
             label = { Text("Deskripsi Singkat") },
-            modifier = Modifier.fillMaxWidth().height(100.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp),
             maxLines = 3
         )
 
@@ -150,9 +155,16 @@ fun AddPostScreen(
                             val fileId = uploadResult.getOrNull() ?: ""
                             // 3. Simpan Postingan ke DB
                             val dbResult = petRepository.savePetPost(
-                                name = petName, breed = breed, age = age,
-                                desc = description, type = listingType, fileId = fileId,
-                                contact = contact, location = location
+                                name = petName,
+                                breed = breed,
+                                age = age,
+                                desc = description,
+                                type = listingType,
+                                fileId = fileId,
+                                contact = contact,
+                                location = location,
+                                uploaderName = userName,
+                                userId = userId
                             )
                             if (dbResult.isSuccess) {
                                 Toast.makeText(context, "Berhasil Posting!", Toast.LENGTH_SHORT).show()
@@ -170,7 +182,9 @@ fun AddPostScreen(
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
             enabled = !isUploading,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00666E))
         ) {

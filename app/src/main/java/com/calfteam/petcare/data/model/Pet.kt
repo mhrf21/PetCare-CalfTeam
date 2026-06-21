@@ -11,5 +11,7 @@ data class Pet(
     val tags: List<String> = emptyList(),
     val lastSeen: String? = null, // 👇 TAMBAH KOMA DI SINI 👇
     val description: String = "",
-    val contact: String = ""
+    val contact: String = "",
+    val uploaderName: String = "Anonim",
+    val userId: String = ""
 )

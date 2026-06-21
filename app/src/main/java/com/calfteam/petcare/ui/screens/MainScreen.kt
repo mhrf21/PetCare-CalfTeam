@@ -35,15 +35,27 @@ fun MainScreen(userName: String) {
     var selectedItem by remember { mutableStateOf(0) }
     var selectedPet by remember { mutableStateOf<Pet?>(null) }
 
+    // 👇 TAMBAHIN STATE UNTUK ID USER 👇
+    var currentUserId by remember { mutableStateOf("") }
+
     val bottomNavItems = listOf("Home", "Search", "Post", "Profile")
     val bottomNavIcons = listOf(Icons.Filled.Home, Icons.Filled.Search, Icons.Filled.AddCircle, Icons.Filled.Person)
+
+    // 👇 AMBIL ID USER YANG LOGIN 👇
+    LaunchedEffect(Unit) {
+        val user = authRepository.getCurrentUser()
+        currentUserId = user?.id ?: ""
+    }
 
     // 3. Logika Tampilan (Detail vs Navigasi Utama)
     if (selectedPet != null) {
         // TAMPILKAN LAYAR DETAIL (FULL SCREEN)
         PetDetailScreen(
             pet = selectedPet!!,
-            onBack = { selectedPet = null } // Kalau di-back, hapus state hewannya
+            petRepository = petRepository, // 👈 Tambahin petRepository biar bisa hapus
+            currentUserId = currentUserId, // Oper ID user ke sini
+            onBack = { selectedPet = null },
+            onDeleteSuccess = { selectedPet = null } // 👈 Kalau sukses hapus, balik ke Home
         )
     } else {
         // JIKA TIDAK ADA HEWAN YANG DIPILIH, TAMPILKAN LAYAR UTAMA
@@ -104,6 +116,8 @@ fun MainScreen(userName: String) {
                     1 -> SearchScreen(petRepository = petRepository)
                     2 -> AddPostScreen(
                         petRepository = petRepository,
+                        userName = userName,
+                        userId = currentUserId,
                         onNavigateToHome = { selectedItem = 0 }
                     )
                     3 -> ProfileScreen(

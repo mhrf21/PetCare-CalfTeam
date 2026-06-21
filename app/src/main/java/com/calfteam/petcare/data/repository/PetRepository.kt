@@ -31,33 +31,31 @@ class PetRepository(client: Client) {
         }
     }
 
-    // 2. SIMPAN POSTINGAN (Disesuaikan dengan Attribute Database lo)
+    // 2. SIMPAN POSTINGAN (Menyimpan ID Gambar saja biar gak kepanjangan)
     suspend fun savePetPost(
-        name: String,
-        breed: String,
-        age: String,
-        desc: String,
-        type: String,
-        fileId: String,
-        tags: List<String> = emptyList(),
-        contact: String = "",
-        location: String = "Nearby"
+        name: String, breed: String, age: String, desc: String,
+        type: String, fileId: String, contact: String, location: String,
+        uploaderName: String,
+        userId: String
     ): Result<Unit> {
         return try {
+            val data = mapOf(
+                "petName" to name,
+                "type" to breed,
+                "age" to age,
+                "description" to desc,
+                "status" to type,
+                "imageId" to fileId, // 👈 Ganti jadi "imageId" dan simpan fileId-nya saja (bukan URL penuh)
+                "contact" to contact,
+                "location" to location,
+                "uploaderName" to uploaderName,
+                "userId" to userId
+            )
             databases.createDocument(
                 databaseId = Constants.DATABASE_ID,
                 collectionId = Constants.COLLECTION_PETS_ID,
-                documentId = ID.unique(),
-                data = mapOf(
-                    "petName" to name,
-                    "type" to type,
-                    "age" to age,
-                    "description" to desc,
-                    "status" to type,
-                    "imageId" to fileId,
-                    "contact" to contact,
-                    "location" to location
-                )
+                documentId = io.appwrite.ID.unique(),
+                data = data
             )
             Result.success(Unit)
         } catch (e: Exception) {
@@ -65,7 +63,7 @@ class PetRepository(client: Client) {
         }
     }
 
-    // 3. AMBIL SEMUA DATA (Bagian paling krusial buat gambar)
+    // 3. AMBIL SEMUA DATA (Generate URL pas data diambil)
     suspend fun getAllPets(): Result<List<Pet>> {
         return try {
             val response = databases.listDocuments(
@@ -74,18 +72,15 @@ class PetRepository(client: Client) {
             )
 
             val pets = response.documents.map { doc ->
-                // Ambil ID gambar dari database
+                // 👈 Ambil id gambar dari kolom "imageId"
                 val imageId = doc.data["imageId"]?.toString() ?: ""
 
-                // Generate URL lengkap pake helper di Constants
+                // 👈 Ubah id gambar jadi URL lengkap menggunakan helper Constants
                 val fullImageUrl = if (imageId.isNotEmpty()) {
                     Constants.getImageUrl(imageId)
                 } else {
                     ""
                 }
-
-                // LOG UNTUK CEK DI LOGCAT: Klik link ini nanti di Logcat!
-                Log.d("PET_DEBUG", "Hewan: ${doc.data["petName"]}, Link Gambar: $fullImageUrl")
 
                 Pet(
                     id = doc.id,
@@ -94,9 +89,12 @@ class PetRepository(client: Client) {
                     age = doc.data["age"]?.toString() ?: "",
                     status = doc.data["status"]?.toString() ?: "Available",
                     distance = doc.data["location"]?.toString() ?: "Nearby",
-                    imageUrl = fullImageUrl, // URL ini yang dipake AsyncImage
+                    imageUrl = fullImageUrl, // 👈 Masukkan URL hasil generate ke model Pet
                     tags = emptyList(),
-                    lastSeen = doc.data["description"]?.toString()
+                    description = doc.data["description"]?.toString() ?: "",
+                    contact = doc.data["contact"]?.toString() ?: "",
+                    uploaderName = doc.data["uploaderName"]?.toString() ?: "Anonim",
+                    userId = doc.data["userId"]?.toString() ?: ""
                 )
             }
             Result.success(pets)
@@ -118,4 +116,19 @@ class PetRepository(client: Client) {
         }
         return tempFile
     }
-}
+
+    // 👇 TAMBAHKAN FUNGSI DELETE INI DI PALING BAWAH 👇
+    suspend fun deletePet(documentId: String): Boolean {
+        return try {
+            databases.deleteDocument(
+                databaseId = Constants.DATABASE_ID,
+                collectionId = Constants.COLLECTION_PETS_ID,
+                documentId = documentId
+            )
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+} // Ini kurung tutup terakhir milik class PetRepository
