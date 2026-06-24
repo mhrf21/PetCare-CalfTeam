@@ -52,10 +52,14 @@ fun MainScreen(userName: String) {
         // TAMPILKAN LAYAR DETAIL (FULL SCREEN)
         PetDetailScreen(
             pet = selectedPet!!,
-            petRepository = petRepository, // 👈 Tambahin petRepository biar bisa hapus
-            currentUserId = currentUserId, // Oper ID user ke sini
+            petRepository = petRepository,
+            currentUserId = currentUserId,
             onBack = { selectedPet = null },
-            onDeleteSuccess = { selectedPet = null } // 👈 Kalau sukses hapus, balik ke Home
+            onDeleteSuccess = { selectedPet = null },
+            onEditSuccess = { 
+                selectedPet = null
+                selectedItem = 0 // Kembali ke Home dan akan refresh
+            }
         )
     } else {
         // JIKA TIDAK ADA HEWAN YANG DIPILIH, TAMPILKAN LAYAR UTAMA

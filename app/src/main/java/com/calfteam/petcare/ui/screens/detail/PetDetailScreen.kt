@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.calfteam.petcare.data.model.Pet
 import com.calfteam.petcare.data.repository.PetRepository
+import com.calfteam.petcare.ui.screens.post.EditPostScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -37,17 +39,34 @@ fun PetDetailScreen(
     petRepository: PetRepository,
     currentUserId: String,
     onBack: () -> Unit,
-    onDeleteSuccess: () -> Unit
+    onDeleteSuccess: () -> Unit,
+    onEditSuccess: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     // 👇 State untuk memunculkan dialog konfirmasi hapus
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showEditScreen by remember { mutableStateOf(false) }
 
     // Tangani tombol "Back" bawaan HP
     BackHandler {
         onBack()
+    }
+
+    // Jika edit screen terbuka, tampilkan EditPostScreen
+    if (showEditScreen) {
+        EditPostScreen(
+            pet = pet,
+            petRepository = petRepository,
+            onBack = { showEditScreen = false },
+            onEditSuccess = {
+                showEditScreen = false
+                onEditSuccess()
+                onBack() // Kembali ke home dan refresh
+            }
+        )
+        return
     }
 
     // 👇 Pop-up Konfirmasi Hapus
@@ -94,12 +113,13 @@ fun PetDetailScreen(
             contentScale = ContentScale.Crop
         )
 
-        // 👇 Header Tombol Back & Delete
+        // 👇 Header Tombol Back & Actions (Edit & Delete)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             // Tombol Back
             IconButton(
@@ -109,13 +129,24 @@ fun PetDetailScreen(
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
             }
 
-            // 👇 Tombol Delete (HANYA MUNCUL JIKA ID USER COCOK) 👇
+            // 👇 Tombol Edit & Delete (HANYA MUNCUL JIKA ID USER COCOK) 👇
             if (currentUserId.isNotEmpty() && currentUserId == pet.userId) {
-                IconButton(
-                    onClick = { showDeleteDialog = true }, // Munculin dialog
-                    modifier = Modifier.background(Color.Red.copy(alpha = 0.8f), shape = CircleShape)
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Tombol Edit
+                    IconButton(
+                        onClick = { showEditScreen = true },
+                        modifier = Modifier.background(Color(0xFF00666E).copy(alpha = 0.8f), shape = CircleShape)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White)
+                    }
+
+                    // Tombol Delete
+                    IconButton(
+                        onClick = { showDeleteDialog = true },
+                        modifier = Modifier.background(Color.Red.copy(alpha = 0.8f), shape = CircleShape)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                    }
                 }
             }
         }

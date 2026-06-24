@@ -170,4 +170,91 @@ class PetRepository(client: Client) {
     suspend fun deletePet(documentId: String): Boolean {
         return deletePetWithLog(documentId).isSuccess
     }
+
+    // 5. EDIT POSTINGAN
+    suspend fun updatePetPost(
+        documentId: String,
+        name: String,
+        breed: String,
+        age: String,
+        desc: String,
+        type: String,
+        contact: String,
+        location: String
+    ): Result<String> {
+        return try {
+            Log.d("EditPet", "=== MULAI EDIT: $documentId ===")
+            
+            val data = mapOf(
+                "petName" to name,
+                "type" to breed,
+                "age" to age,
+                "description" to desc,
+                "status" to type,
+                "contact" to contact,
+                "location" to location
+            )
+            
+            databases.updateDocument(
+                databaseId = Constants.DATABASE_ID,
+                collectionId = Constants.COLLECTION_PETS_ID,
+                documentId = documentId,
+                data = data
+            )
+            
+            Log.d("EditPet", "✓ Postingan berhasil diupdate: $documentId")
+            Result.success("Berhasil update postingan")
+        } catch (e: Exception) {
+            Log.e("EditPet", "❌ ERROR UPDATE: ${e.message}", e)
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    // 6. UPDATE GAMBAR (jika user ganti foto)
+    suspend fun updatePetImage(
+        documentId: String,
+        oldImageId: String,
+        newImageFile: File
+    ): Result<String> {
+        return try {
+            Log.d("EditPet", "=== MULAI UPDATE GAMBAR ===")
+            
+            // 1. Upload gambar baru
+            val uploadResult = uploadPetImage(newImageFile)
+            if (!uploadResult.isSuccess) {
+                return uploadResult
+            }
+            
+            val newImageId = uploadResult.getOrNull() ?: return Result.failure(Exception("Gagal upload gambar"))
+            
+            // 2. Hapus gambar lama
+            if (oldImageId.isNotEmpty()) {
+                try {
+                    storage.deleteFile(
+                        bucketId = Constants.BUCKET_PET_IMAGES_ID,
+                        fileId = oldImageId
+                    )
+                    Log.d("EditPet", "✓ Gambar lama dihapus: $oldImageId")
+                } catch (e: Exception) {
+                    Log.w("EditPet", "⚠ Gagal hapus gambar lama: ${e.message}")
+                }
+            }
+            
+            // 3. Update database dengan imageId baru
+            databases.updateDocument(
+                databaseId = Constants.DATABASE_ID,
+                collectionId = Constants.COLLECTION_PETS_ID,
+                documentId = documentId,
+                data = mapOf("imageId" to newImageId)
+            )
+            
+            Log.d("EditPet", "✓ Gambar berhasil diupdate: $newImageId")
+            Result.success(newImageId)
+        } catch (e: Exception) {
+            Log.e("EditPet", "❌ ERROR UPDATE GAMBAR: ${e.message}", e)
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
 }
