@@ -117,18 +117,57 @@ class PetRepository(client: Client) {
         return tempFile
     }
 
-    // 👇 TAMBAHKAN FUNGSI DELETE INI DI PALING BAWAH 👇
-    suspend fun deletePet(documentId: String): Boolean {
+    // 4. HAPUS POSTINGAN (Beserta File Gambar) - dengan detail logging
+    suspend fun deletePetWithLog(documentId: String): Result<String> {
         return try {
+            Log.d("DeletePet", "=== MULAI HAPUS: $documentId ===")
+             
+            // 1. Ambil dokumen dulu untuk dapat imageId
+            val doc = databases.getDocument(
+                databaseId = Constants.DATABASE_ID,
+                collectionId = Constants.COLLECTION_PETS_ID,
+                documentId = documentId
+            )
+            Log.d("DeletePet", "✓ Dokumen ditemukan: ${doc.id}")
+
+            // 2. Ekstrak imageId dari dokumen
+            val imageId = doc.data["imageId"]?.toString()
+            Log.d("DeletePet", "✓ ImageId dari DB: $imageId")
+
+            // 3. Hapus file gambar dari Storage (jika ada)
+            if (!imageId.isNullOrEmpty()) {
+                try {
+                    storage.deleteFile(
+                        bucketId = Constants.BUCKET_PET_IMAGES_ID,
+                        fileId = imageId
+                    )
+                    Log.d("DeletePet", "✓ Gambar berhasil dihapus: $imageId")
+                } catch (e: Exception) {
+                    Log.w("DeletePet", "⚠ Gagal hapus gambar: ${e.message}")
+                    // Tetap lanjut hapus dokumen meski gambar gagal
+                }
+            } else {
+                Log.w("DeletePet", "⚠ ImageId kosong, skip hapus gambar")
+            }
+
+            // 4. Hapus dokumen dari Database
             databases.deleteDocument(
                 databaseId = Constants.DATABASE_ID,
                 collectionId = Constants.COLLECTION_PETS_ID,
                 documentId = documentId
             )
-            true
+            Log.d("DeletePet", "✓ Dokumen berhasil dihapus: $documentId")
+
+            Result.success("Berhasil hapus posting & gambar")
         } catch (e: Exception) {
+            Log.e("DeletePet", "❌ ERROR HAPUS: ${e.message}", e)
             e.printStackTrace()
-            false
+            Result.failure(e)
         }
     }
-} // Ini kurung tutup terakhir milik class PetRepository
+
+    // Backward compatibility - untuk kompatibilitas dengan kode lama
+    suspend fun deletePet(documentId: String): Boolean {
+        return deletePetWithLog(documentId).isSuccess
+    }
+}

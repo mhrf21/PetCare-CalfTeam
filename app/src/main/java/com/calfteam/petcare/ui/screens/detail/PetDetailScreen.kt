@@ -61,12 +61,13 @@ fun PetDetailScreen(
                     onClick = {
                         showDeleteDialog = false
                         coroutineScope.launch {
-                            val success = petRepository.deletePet(pet.id)
-                            if (success) {
-                                Toast.makeText(context, "Postingan berhasil dihapus", Toast.LENGTH_SHORT).show()
+                            val result = petRepository.deletePetWithLog(pet.id)
+                            if (result.isSuccess) {
+                                Toast.makeText(context, "Postingan berhasil dihapus ✓", Toast.LENGTH_SHORT).show()
                                 onDeleteSuccess() // Kembali ke Home setelah dihapus
                             } else {
-                                Toast.makeText(context, "Gagal menghapus postingan", Toast.LENGTH_SHORT).show()
+                                val errorMsg = result.exceptionOrNull()?.message ?: "Error tidak diketahui"
+                                Toast.makeText(context, "Error: $errorMsg", Toast.LENGTH_LONG).show()
                             }
                         }
                     }
