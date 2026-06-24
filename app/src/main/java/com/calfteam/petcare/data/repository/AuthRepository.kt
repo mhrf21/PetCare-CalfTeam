@@ -61,5 +61,25 @@ class AuthRepository(context: Context) {
             null
         }
     }
+
+    // UPDATE NAMA
+    suspend fun updateName(newName: String): Result<String> {
+        return try {
+            val user = account.updateName(name = newName)
+            Result.success(user.name)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // UPDATE EMAIL (Appwrite butuh password sebagai konfirmasi)
+    suspend fun updateEmail(newEmail: String, currentPassword: String): Result<String> {
+        return try {
+            val user = account.updateEmail(email = newEmail, password = currentPassword)
+            Result.success(user.email)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 

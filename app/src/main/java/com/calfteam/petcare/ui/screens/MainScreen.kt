@@ -18,6 +18,7 @@ import com.calfteam.petcare.data.repository.PetRepository
 import com.calfteam.petcare.ui.screens.detail.PetDetailScreen
 import com.calfteam.petcare.ui.screens.home.HomeScreen
 import com.calfteam.petcare.ui.screens.post.AddPostScreen
+import com.calfteam.petcare.ui.screens.profile.EditProfileScreen
 import com.calfteam.petcare.ui.screens.profile.ProfileScreen
 import com.calfteam.petcare.ui.screens.search.SearchScreen
 import com.calfteam.petcare.utils.AppwriteConfig
@@ -32,8 +33,10 @@ fun MainScreen(userName: String) {
 
     var selectedItem by remember { mutableStateOf(0) }
     var selectedPet by remember { mutableStateOf<Pet?>(null) }
+    var showEditProfile by remember { mutableStateOf(false) }
 
     var currentUserId by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf(userName) }
 
     val bottomNavItems = listOf("Home", "Search", "Post", "Profile")
     val bottomNavIcons = listOf(Icons.Filled.Home, Icons.Filled.Search, Icons.Filled.AddCircle, Icons.Filled.Person)
@@ -41,6 +44,20 @@ fun MainScreen(userName: String) {
     LaunchedEffect(Unit) {
         val user = authRepository.getCurrentUser()
         currentUserId = user?.id ?: ""
+    }
+
+    if (showEditProfile) {
+        EditProfileScreen(
+            authRepository = authRepository,
+            currentName = displayName,
+            currentEmail = "", // Diambil ulang di EditProfile via getCurrentUser kalau perlu; untuk konsistensi kita biarkan kosong agar user bisa edit field
+            onBack = { showEditProfile = false },
+            onProfileUpdated = { newName, _ ->
+                displayName = newName
+                showEditProfile = false
+            }
+        )
+        return
     }
 
     if (selectedPet != null) {
@@ -122,11 +139,12 @@ fun MainScreen(userName: String) {
                         onNavigateToHome = { selectedItem = 0 }
                     )
                     3 -> ProfileScreen(
-                        userName = userName,
+                        userName = displayName,
                         authRepository = authRepository,
                         petRepository = petRepository,
                         currentUserId = currentUserId,
-                        onPetSelected = { pet -> selectedPet = pet }
+                        onPetSelected = { pet -> selectedPet = pet },
+                        onEditProfile = { showEditProfile = true }
                     )
                 }
             }
