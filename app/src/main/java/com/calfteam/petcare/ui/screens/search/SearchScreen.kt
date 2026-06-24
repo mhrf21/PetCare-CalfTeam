@@ -6,14 +6,14 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +28,7 @@ import com.calfteam.petcare.data.model.Pet
 import com.calfteam.petcare.data.repository.LocationRepository
 import com.calfteam.petcare.data.repository.PetRepository
 import com.calfteam.petcare.ui.components.PetCard
+import com.calfteam.petcare.ui.screens.post.commonPetTypes
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,104 +41,105 @@ fun SearchScreen(
     val coroutineScope = rememberCoroutineScope()
     val locationRepository = remember { LocationRepository(context) }
 
-    // State
-    var userLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
-    var nearbyPets by remember { mutableStateOf<List<Pet>>(emptyList()) }
-    var isLoadingLocation by remember { mutableStateOf(false) }
-    var isLoadingPets by remember { mutableStateOf(false) }
-    var selectedBreed by remember { mutableStateOf<String?>(null) }
+    // Data
+    var allPets by remember { mutableStateOf<List<Pet>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    // Filter state
+    var searchText by remember { mutableStateOf("") }
     var selectedStatus by remember { mutableStateOf<String?>(null) }
-    var userLocationText by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf<String?>(null) }
+    var radiusKm by remember { mutableStateOf<Int?>(null) } // null = Semua jarak
+    var userLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var isLoadingLocation by remember { mutableStateOf(false) }
 
-    // Available filters
     val statusOptions = listOf("Adoption", "Missing")
-    val breeds = listOf("Anjing", "Kucing", "Kelinci", "Hamster", "Burung")
+    val radiusOptions = listOf(1, 5, 10, 25)
 
-    // Permission launcher
+    // Muat semua pets sekali; sisanya difilter in-memory (instan)
+    LaunchedEffect(Unit) {
+        isLoading = true
+        petRepository.getAllPets()
+            .onSuccess { allPets = it; isLoading = false }
+            .onFailure {
+                Toast.makeText(context, "Error load data: ${it.message}", Toast.LENGTH_SHORT).show()
+                isLoading = false
+            }
+    }
+
+    fun fetchLocation() {
+        coroutineScope.launch {
+            isLoadingLocation = true
+            val result = locationRepository.getCurrentLocation()
+            isLoadingLocation = false
+            if (result.isSuccess) {
+                val (lat, lng) = result.getOrNull() ?: return@launch
+                userLocation = Pair(lat, lng)
+            } else {
+                Toast.makeText(
+                    context,
+                    "Gagal mendapat lokasi: ${result.exceptionOrNull()?.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         ) {
-            coroutineScope.launch {
-                isLoadingLocation = true
-                val result = locationRepository.getCurrentLocation()
-                isLoadingLocation = false
-
-                if (result.isSuccess) {
-                    val (lat, lng) = result.getOrNull() ?: return@launch
-                    userLocation = Pair(lat, lng)
-                    userLocationText = "📍 ${String.format("%.4f", lat)}, ${String.format("%.4f", lng)}"
-                    
-                    // Auto search nearby pets
-                    isLoadingPets = true
-                    val searchResult = petRepository.getNearbyPets(
-                        userLat = lat,
-                        userLng = lng,
-                        radiusKm = 5,
-                        breed = selectedBreed,
-                        status = selectedStatus,
-                        locationRepo = locationRepository
-                    )
-                    isLoadingPets = false
-
-                    if (searchResult.isSuccess) {
-                        nearbyPets = searchResult.getOrNull() ?: emptyList()
-                        if (nearbyPets.isEmpty()) {
-                            Toast.makeText(context, "Tidak ada hewan terdekat", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "Error: ${searchResult.exceptionOrNull()?.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                } else {
-                    Toast.makeText(
-                        context,
-                        "Gagal mendapat lokasi: ${result.exceptionOrNull()?.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
+            fetchLocation()
         } else {
             Toast.makeText(context, "Location permission diperlukan", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Function untuk trigger search dengan filter
-    val triggerSearch = remember {
-        {
-            if (userLocation != null) {
-                coroutineScope.launch {
-                    isLoadingPets = true
-                    val result = petRepository.getNearbyPets(
-                        userLat = userLocation!!.first,
-                        userLng = userLocation!!.second,
-                        radiusKm = 5,
-                        breed = selectedBreed,
-                        status = selectedStatus,
-                        locationRepo = locationRepository
-                    )
-                    isLoadingPets = false
-
-                    if (result.isSuccess) {
-                        nearbyPets = result.getOrNull() ?: emptyList()
-                        if (nearbyPets.isEmpty()) {
-                            Toast.makeText(context, "Tidak ada hewan terdekat", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "Error: ${result.exceptionOrNull()?.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
-            }
+    fun requestLocation() {
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        } else {
+            fetchLocation()
         }
+    }
+
+    // ===== Filtering (in-memory) =====
+    val q = searchText.trim()
+    val baseFiltered = allPets.filter { pet ->
+        val matchesText = q.isEmpty() ||
+                pet.name.contains(q, ignoreCase = true) ||
+                pet.breed.contains(q, ignoreCase = true) ||
+                pet.description.contains(q, ignoreCase = true)
+        val matchesStatus = selectedStatus == null || pet.status.equals(selectedStatus, ignoreCase = true)
+        val matchesType = selectedType == null || pet.breed.equals(selectedType, ignoreCase = true)
+        matchesText && matchesStatus && matchesType
+    }
+
+    val loc = userLocation
+    val activeRadius = radiusKm
+    val filteredPets: List<Pet> = if (activeRadius != null && loc != null) {
+        baseFiltered.mapNotNull { pet ->
+            val parts = pet.distance.split(",")
+            val lat = parts.getOrNull(0)?.trim()?.toDoubleOrNull()
+            val lng = parts.getOrNull(1)?.trim()?.toDoubleOrNull()
+            if (lat == null || lng == null) return@mapNotNull null
+            val km = locationRepository.calculateDistance(loc.first, loc.second, lat, lng)
+            if (km > activeRadius) null
+            else Pair(pet.copy(distance = locationRepository.formatDistance(km)), km)
+        }.sortedBy { it.second }.map { it.first }
+    } else {
+        baseFiltered
     }
 
     Column(
@@ -145,78 +147,55 @@ fun SearchScreen(
             .fillMaxSize()
             .background(Color(0xFFFBF9F8))
     ) {
+        // ===== Header: judul + search + lokasi =====
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White)
                 .padding(16.dp)
         ) {
-            Text(
-                "🔍 Cari Hewan Terdekat",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF00666E)
+            Text("🔍 Cari Hewan", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00666E))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = searchText,
+                onValueChange = { searchText = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Cari nama, ras, deskripsi...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedBorderColor = Color(0xFF00666E),
+                    unfocusedBorderColor = Color.LightGray
+                ),
+                singleLine = true
             )
+
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
-                onClick = {
-                    if (ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        permissionLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            )
-                        )
-                    } else {
-                        coroutineScope.launch {
-                            isLoadingLocation = true
-                            val result = locationRepository.getCurrentLocation()
-                            isLoadingLocation = false
-
-                            if (result.isSuccess) {
-                                val (lat, lng) = result.getOrNull() ?: return@launch
-                                userLocation = Pair(lat, lng)
-                                userLocationText = "📍 ${String.format("%.4f", lat)}, ${String.format("%.4f", lng)}"
-                                triggerSearch()
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    "Gagal mendapat lokasi: ${result.exceptionOrNull()?.message}",
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        }
-                    }
-                },
+                onClick = { requestLocation() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00666E)),
                 enabled = !isLoadingLocation,
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Icon(
-                    Icons.Default.MyLocation,
-                    contentDescription = "Get Location",
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Default.MyLocation, contentDescription = "Lokasi", modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 if (isLoadingLocation) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp))
                 } else {
-                    Text("Cari Lokasi Saya", fontWeight = FontWeight.Bold)
+                    Text(if (loc == null) "Gunakan Lokasi Saya" else "Perbarui Lokasi", fontWeight = FontWeight.Bold)
                 }
             }
-
-            if (userLocationText.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
+            if (loc != null) {
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    userLocationText,
+                    "📍 ${String.format("%.4f", loc.first)}, ${String.format("%.4f", loc.second)}",
                     fontSize = 12.sp,
                     color = Color.Gray,
                     fontWeight = FontWeight.Medium
@@ -224,120 +203,75 @@ fun SearchScreen(
             }
         }
 
-        if (userLocation == null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("📍", fontSize = 48.sp)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        "Aktifkan Lokasi",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-                    Text(
-                        "Tekan tombol di atas untuk\nmencari hewan terdekat",
-                        fontSize = 14.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
+        if (isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Color(0xFF00666E))
             }
         } else {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(vertical = 16.dp)
             ) {
+                // Filter jarak
                 item {
-                    Text("Filter Status:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text("Jarak:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                     Spacer(modifier = Modifier.height(8.dp))
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         item {
-                            FilterChip(
-                                selected = selectedStatus == null,
-                                onClick = {
-                                    selectedStatus = null
-                                    triggerSearch()
-                                },
-                                label = { Text("Semua") },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Color(0xFF00666E),
-                                    selectedLabelColor = Color.White
-                                )
-                            )
+                            SearchFilterChip(selected = radiusKm == null, label = "Semua") { radiusKm = null }
+                        }
+                        items(radiusOptions) { r ->
+                            SearchFilterChip(selected = radiusKm == r, label = "$r km") {
+                                radiusKm = r
+                                if (userLocation == null) requestLocation()
+                            }
+                        }
+                    }
+                }
+
+                // Filter status
+                item {
+                    Text("Status:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        item {
+                            SearchFilterChip(selected = selectedStatus == null, label = "Semua") { selectedStatus = null }
                         }
                         items(statusOptions) { status ->
-                            FilterChip(
-                                selected = selectedStatus == status,
-                                onClick = {
-                                    selectedStatus = status
-                                    triggerSearch()
-                                },
-                                label = { Text(status) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Color(0xFF00666E),
-                                    selectedLabelColor = Color.White
-                                )
-                            )
+                            SearchFilterChip(selected = selectedStatus == status, label = status) { selectedStatus = status }
                         }
                     }
                 }
 
+                // Filter jenis
                 item {
-                    Text("Filter Breed:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text("Jenis:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                     Spacer(modifier = Modifier.height(8.dp))
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         item {
-                            FilterChip(
-                                selected = selectedBreed == null,
-                                onClick = {
-                                    selectedBreed = null
-                                    triggerSearch()
-                                },
-                                label = { Text("Semua") },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Color(0xFF00666E),
-                                    selectedLabelColor = Color.White
-                                )
-                            )
+                            SearchFilterChip(selected = selectedType == null, label = "Semua") { selectedType = null }
                         }
-                        items(breeds) { breed ->
-                            FilterChip(
-                                selected = selectedBreed == breed,
-                                onClick = {
-                                    selectedBreed = breed
-                                    triggerSearch()
-                                },
-                                label = { Text(breed) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Color(0xFF00666E),
-                                    selectedLabelColor = Color.White
-                                )
-                            )
+                        items(commonPetTypes) { type ->
+                            SearchFilterChip(selected = selectedType == type, label = type) { selectedType = type }
                         }
                     }
                 }
 
-                if (isLoadingPets) {
+                if (radiusKm != null && userLocation == null) {
                     item {
-                        Box(modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = Color(0xFF00666E))
-                        }
+                        Text(
+                            "Tekan \"Gunakan Lokasi Saya\" agar filter jarak aktif.",
+                            fontSize = 12.sp,
+                            color = Color(0xFFB06A26)
+                        )
                     }
-                } else if (nearbyPets.isEmpty()) {
+                }
+
+                // Hasil
+                if (filteredPets.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier
@@ -345,27 +279,38 @@ fun SearchScreen(
                                 .height(200.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("Tidak ada hewan terdekat 🐾", color = Color.Gray, fontSize = 16.sp)
+                            Text("Tidak ada hewan ditemukan 🐾", color = Color.Gray, fontSize = 16.sp)
                         }
                     }
                 } else {
                     item {
                         Text(
-                            "Hewan Terdekat (${nearbyPets.size}):",
+                            "Hasil (${filteredPets.size}):",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black
                         )
                     }
-
-                    items(nearbyPets) { pet ->
-                        PetCard(
-                            pet = pet,
-                            onClick = { onPetSelected(pet) }
-                        )
+                    items(filteredPets) { pet ->
+                        PetCard(pet = pet, onClick = { onPetSelected(pet) })
                     }
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchFilterChip(selected: Boolean, label: String, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label) },
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = Color(0xFF00666E),
+            selectedLabelColor = Color.White
+        )
+    )
 }

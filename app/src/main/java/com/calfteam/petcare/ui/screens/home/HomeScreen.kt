@@ -2,6 +2,8 @@ package com.calfteam.petcare.ui.screens.home
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -15,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -26,13 +29,16 @@ import com.calfteam.petcare.ui.components.PetCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(petRepository: PetRepository, onPetSelected: (Pet) -> Unit) {
+fun HomeScreen(
+    petRepository: PetRepository,
+    onOpenSearch: () -> Unit,
+    onPetSelected: (Pet) -> Unit
+) {
     val context = LocalContext.current
     var petsList by remember { mutableStateOf<List<Pet>>(emptyList()) }
     var isLoadingPets by remember { mutableStateOf(true) }
 
-    // State untuk Filter & Search
-    var searchText by remember { mutableStateOf("") }
+    // State untuk Filter kategori (pencarian teks pindah ke tab Search)
     var selectedCategory by remember { mutableStateOf("All Pets") }
     val categories = listOf("All Pets", "Adoption", "Missing") // Disesuaikan dengan status di database lu
 
@@ -48,13 +54,9 @@ fun HomeScreen(petRepository: PetRepository, onPetSelected: (Pet) -> Unit) {
         }
     }
 
-    // Filter logika (Gabungan Search text & Kategori)
+    // Filter berdasarkan kategori (pencarian teks pindah ke tab Search)
     val filteredPets = petsList.filter { pet ->
-        val matchesSearch = pet.name.contains(searchText, ignoreCase = true) ||
-                pet.breed.contains(searchText, ignoreCase = true)
-        val matchesCategory = if (selectedCategory == "All Pets") true else pet.status.equals(selectedCategory, ignoreCase = true)
-
-        matchesSearch && matchesCategory
+        if (selectedCategory == "All Pets") true else pet.status.equals(selectedCategory, ignoreCase = true)
     }
 
     Column(
@@ -65,22 +67,21 @@ fun HomeScreen(petRepository: PetRepository, onPetSelected: (Pet) -> Unit) {
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 1. Search Bar
-        OutlinedTextField(
-            value = searchText,
-            onValueChange = { searchText = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search for breeds, names...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                focusedBorderColor = Color(0xFF00666E),
-                unfocusedBorderColor = Color.LightGray
-            ),
-            singleLine = true
-        )
+        // 1. Search Bar (membuka tab Search saat diketuk)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(1.dp, Color.LightGray, RoundedCornerShape(16.dp))
+                .clickable { onOpenSearch() }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.Gray)
+            Spacer(modifier = Modifier.width(12.dp))
+            Text("Cari hewan...", color = Color.Gray)
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

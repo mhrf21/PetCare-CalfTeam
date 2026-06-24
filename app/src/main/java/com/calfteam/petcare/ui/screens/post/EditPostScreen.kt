@@ -187,10 +187,9 @@ fun EditPostScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            OutlinedTextField(
+            PetTypeDropdown(
                 value = breed,
                 onValueChange = { breed = it },
-                label = { Text("Ras / Jenis") },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))

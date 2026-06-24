@@ -44,7 +44,6 @@ fun AddPostScreen(
     val coroutineScope = rememberCoroutineScope()
     val locationRepository = remember { LocationRepository(context) }
 
-    // State form
     var petName by remember { mutableStateOf("") }
     var breed by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("") }
@@ -53,12 +52,10 @@ fun AddPostScreen(
     var location by remember { mutableStateOf("") }
     var listingType by remember { mutableStateOf("Adoption") }
 
-    // State gambar
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var isUploading by remember { mutableStateOf(false) }
     var isGettingLocation by remember { mutableStateOf(false) }
 
-    // Permission launcher untuk location
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -101,7 +98,6 @@ fun AddPostScreen(
         Text("Buat Postingan Baru", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00666E))
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Pemilih Gambar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -128,7 +124,6 @@ fun AddPostScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Pilihan Tipe Listing (Adoption / Missing)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected = listingType == "Adoption",
@@ -146,17 +141,15 @@ fun AddPostScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Form Input
         OutlinedTextField(value = petName, onValueChange = { petName = it }, label = { Text("Nama Hewan") }, modifier = Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.height(8.dp))
-        OutlinedTextField(value = breed, onValueChange = { breed = it }, label = { Text("Ras / Jenis") }, modifier = Modifier.fillMaxWidth())
+        PetTypeDropdown(value = breed, onValueChange = { breed = it }, modifier = Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(value = age, onValueChange = { age = it }, label = { Text("Umur (cth: 2 Bulan)") }, modifier = Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(value = contact, onValueChange = { contact = it }, label = { Text("Kontak (No HP)") }, modifier = Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Location Section dengan Hybrid GPS
         if (listingType == "Adoption") {
             // ADOPTION: GPS Auto-fill
             Text("📍 Lokasi Hewan (Auto GPS):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
@@ -232,7 +225,6 @@ fun AddPostScreen(
                 }
             }
         } else {
-            // MISSING: Manual Input + GPS Helper
             Text("📍 Lokasi Terakhir Dilihat:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
             Spacer(modifier = Modifier.height(8.dp))
             
@@ -342,7 +334,7 @@ fun AddPostScreen(
                             )
                             if (dbResult.isSuccess) {
                                 Toast.makeText(context, "Berhasil Posting!", Toast.LENGTH_SHORT).show()
-                                onNavigateToHome() // Pindah ke tab Home
+                                onNavigateToHome()
                             } else {
                                 Toast.makeText(context, "Gagal simpan data", Toast.LENGTH_SHORT).show()
                             }
@@ -368,6 +360,6 @@ fun AddPostScreen(
                 Text("Posting Sekarang", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Spacer(modifier = Modifier.height(80.dp)) // Ruang untuk bottom nav
+        Spacer(modifier = Modifier.height(80.dp))
     }
 }

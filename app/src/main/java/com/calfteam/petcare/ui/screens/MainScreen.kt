@@ -25,31 +25,25 @@ import com.calfteam.petcare.utils.AppwriteConfig
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(userName: String) {
-    // 1. Inisialisasi Context & Repository
     val context = LocalContext.current
     val client = remember { AppwriteConfig.getClient(context) }
     val petRepository = remember { PetRepository(client) }
     val authRepository = remember { AuthRepository(context) }
 
-    // 2. State Navigasi Bawah & Detail
     var selectedItem by remember { mutableStateOf(0) }
     var selectedPet by remember { mutableStateOf<Pet?>(null) }
 
-    // 👇 TAMBAHIN STATE UNTUK ID USER 👇
     var currentUserId by remember { mutableStateOf("") }
 
     val bottomNavItems = listOf("Home", "Search", "Post", "Profile")
     val bottomNavIcons = listOf(Icons.Filled.Home, Icons.Filled.Search, Icons.Filled.AddCircle, Icons.Filled.Person)
 
-    // 👇 AMBIL ID USER YANG LOGIN 👇
     LaunchedEffect(Unit) {
         val user = authRepository.getCurrentUser()
         currentUserId = user?.id ?: ""
     }
 
-    // 3. Logika Tampilan (Detail vs Navigasi Utama)
     if (selectedPet != null) {
-        // TAMPILKAN LAYAR DETAIL (FULL SCREEN)
         PetDetailScreen(
             pet = selectedPet!!,
             petRepository = petRepository,
@@ -58,11 +52,10 @@ fun MainScreen(userName: String) {
             onDeleteSuccess = { selectedPet = null },
             onEditSuccess = { 
                 selectedPet = null
-                selectedItem = 0 // Kembali ke Home dan akan refresh
+                selectedItem = 0
             }
         )
     } else {
-        // JIKA TIDAK ADA HEWAN YANG DIPILIH, TAMPILKAN LAYAR UTAMA
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -101,7 +94,7 @@ fun MainScreen(userName: String) {
             floatingActionButton = {
                 if (selectedItem == 0) {
                     FloatingActionButton(
-                        onClick = { selectedItem = 2 }, // Pindah ke Post
+                        onClick = { selectedItem = 2 },
                         containerColor = Color(0xFF00666E),
                         contentColor = Color.White,
                         shape = RoundedCornerShape(50)
@@ -115,7 +108,8 @@ fun MainScreen(userName: String) {
                 when (selectedItem) {
                     0 -> HomeScreen(
                         petRepository = petRepository,
-                        onPetSelected = { pet -> selectedPet = pet } // TANGKAP KLIK DARI HOME
+                        onOpenSearch = { selectedItem = 1 },
+                        onPetSelected = { pet -> selectedPet = pet }
                     )
                     1 -> SearchScreen(
                        petRepository = petRepository,
@@ -129,7 +123,10 @@ fun MainScreen(userName: String) {
                     )
                     3 -> ProfileScreen(
                         userName = userName,
-                        authRepository = authRepository
+                        authRepository = authRepository,
+                        petRepository = petRepository,
+                        currentUserId = currentUserId,
+                        onPetSelected = { pet -> selectedPet = pet }
                     )
                 }
             }

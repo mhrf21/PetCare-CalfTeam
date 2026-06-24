@@ -5,11 +5,11 @@ data class Pet(
     val name: String,
     val breed: String,
     val age: String,
-    val status: String, // "Available" atau "Missing"
+    val status: String,
     val distance: String,
-    val imageUrl: String, // Nanti untuk URL gambar dari Appwrite Storage
+    val imageUrl: String,
     val tags: List<String> = emptyList(),
-    val lastSeen: String? = null, // 👇 TAMBAH KOMA DI SINI 👇
+    val lastSeen: String? = null,
     val description: String = "",
     val contact: String = "",
     val uploaderName: String = "Anonim",
