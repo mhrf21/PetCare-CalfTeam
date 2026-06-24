@@ -117,7 +117,10 @@ fun MainScreen(userName: String) {
                         petRepository = petRepository,
                         onPetSelected = { pet -> selectedPet = pet } // TANGKAP KLIK DARI HOME
                     )
-                    1 -> SearchScreen(petRepository = petRepository)
+                    1 -> SearchScreen(
+                       petRepository = petRepository,
+                       onPetSelected = { pet -> selectedPet = pet }
+                    )
                     2 -> AddPostScreen(
                         petRepository = petRepository,
                         userName = userName,

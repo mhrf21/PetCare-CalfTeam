@@ -257,4 +257,109 @@ class PetRepository(client: Client) {
             Result.failure(e)
         }
     }
+
+    // 7. GET NEARBY PETS (BERDASARKAN RADIUS & FILTER)
+    suspend fun getNearbyPets(
+        userLat: Double,
+        userLng: Double,
+        radiusKm: Int = 5,
+        breed: String? = null,
+        status: String? = null,
+        locationRepo: LocationRepository
+    ): Result<List<Pet>> {
+        return try {
+            Log.d("NearbyPets", "=== MULAI CARI NEARBY PETS ===")
+            Log.d("NearbyPets", "User Location: ($userLat, $userLng), Radius: ${radiusKm}km")
+
+            val response = databases.listDocuments(
+                databaseId = Constants.DATABASE_ID,
+                collectionId = Constants.COLLECTION_PETS_ID
+            )
+
+            val pets = response.documents.mapNotNull { doc ->
+                // Parse location dari field "location" yang tersimpan sebagai text
+                // Format: "Jakarta, Indonesia" atau lat,lng
+                val locationText = doc.data["location"]?.toString() ?: return@mapNotNull null
+                val imageId = doc.data["imageId"]?.toString() ?: ""
+
+                // Try parse as lat,lng
+                val (petLat, petLng) = try {
+                    val parts = locationText.split(",")
+                    if (parts.size == 2) {
+                        Pair(parts[0].trim().toDoubleOrNull(), parts[1].trim().toDoubleOrNull())
+                    } else {
+                        Pair(null, null)
+                    }
+                } catch (e: Exception) {
+                    Log.w("NearbyPets", "Failed to parse location: $locationText")
+                    Pair(null, null)
+                }
+
+                // Skip jika location invalid
+                if (petLat == null || petLng == null) {
+                    return@mapNotNull null
+                }
+
+                // Hitung distance
+                val distanceKm = locationRepo.calculateDistance(userLat, userLng, petLat, petLng)
+
+                // Filter by radius
+                if (distanceKm > radiusKm) {
+                    return@mapNotNull null
+                }
+
+                // Filter by status
+                val petStatus = doc.data["status"]?.toString() ?: "Available"
+                if (status != null && !petStatus.equals(status, ignoreCase = true)) {
+                    return@mapNotNull null
+                }
+
+                // Filter by breed
+                val petBreed = doc.data["type"]?.toString() ?: "Unknown"
+                if (breed != null && !petBreed.equals(breed, ignoreCase = true)) {
+                    return@mapNotNull null
+                }
+
+                val fullImageUrl = if (imageId.isNotEmpty()) {
+                    Constants.getImageUrl(imageId)
+                } else {
+                    ""
+                }
+
+                Pet(
+                    id = doc.id,
+                    name = doc.data["petName"]?.toString() ?: "No Name",
+                    breed = petBreed,
+                    age = doc.data["age"]?.toString() ?: "",
+                    status = petStatus,
+                    distance = locationRepo.formatDistance(distanceKm),
+                    imageUrl = fullImageUrl,
+                    tags = emptyList(),
+                    description = doc.data["description"]?.toString() ?: "",
+                    contact = doc.data["contact"]?.toString() ?: "",
+                    uploaderName = doc.data["uploaderName"]?.toString() ?: "Anonim",
+                    userId = doc.data["userId"]?.toString() ?: ""
+                )
+            }
+
+            // Sort by distance
+            val sortedPets = pets.sortedBy { it.distance.extractDistance() }
+
+            Log.d("NearbyPets", "✓ Found ${sortedPets.size} nearby pets")
+            Result.success(sortedPets)
+        } catch (e: Exception) {
+            Log.e("NearbyPets", "❌ ERROR: ${e.message}", e)
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+}
+
+// Extension function untuk extract numeric distance dari formatted string
+private fun String.extractDistance(): Double {
+    return when {
+        this.contains("m") -> this.replace("m", "").toDoubleOrNull() ?: 0.0 / 1000.0
+        this.contains("km") -> this.replace("km", "").trim().toDoubleOrNull() ?: 0.0
+        else -> 0.0
+    }
 }

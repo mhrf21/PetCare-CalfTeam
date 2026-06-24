@@ -31,16 +31,38 @@ fun PetCard(pet: Pet, onClick: () -> Unit = {}) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
-            // Gambar Hewan dari URL Appwrite
-            AsyncImage(
-                model = pet.imageUrl,
-                contentDescription = "Foto ${pet.name}",
+            // Gambar Hewan dari URL Appwrite dengan badge status
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(140.dp)
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                contentScale = ContentScale.Crop
-            )
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+            ) {
+                AsyncImage(
+                    model = pet.imageUrl,
+                    contentDescription = "Foto ${pet.name}",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Status badge (Missing / Adoption)
+                val badgeColor = if (pet.status.equals("Missing", true)) Color(0xFFFF6B6B) else Color(0xFF00666E)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = badgeColor.copy(alpha = 0.95f),
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .align(Alignment.TopStart)
+                ) {
+                    Text(
+                        text = if (pet.status.equals("Missing", true)) "Missing" else "Adoption",
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
 
             // Info Hewan
             Column(modifier = Modifier.padding(12.dp)) {
