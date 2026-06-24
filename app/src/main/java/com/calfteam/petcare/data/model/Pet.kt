@@ -13,5 +13,6 @@ data class Pet(
     val description: String = "",
     val contact: String = "",
     val uploaderName: String = "Anonim",
-    val userId: String = ""
+    val userId: String = "",
+    val resolved: Boolean = false
 )

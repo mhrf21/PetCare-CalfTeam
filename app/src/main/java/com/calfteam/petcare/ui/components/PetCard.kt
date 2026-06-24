@@ -62,6 +62,25 @@ fun PetCard(pet: Pet, onClick: () -> Unit = {}) {
                         fontWeight = FontWeight.Bold
                     )
                 }
+
+                // Badge "Selesai" jika sudah ditemukan/diadopsi
+                if (pet.resolved) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF2E7D32).copy(alpha = 0.95f),
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .align(Alignment.TopEnd)
+                    ) {
+                        Text(
+                            text = "✓ Selesai",
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
 
             // Info Hewan

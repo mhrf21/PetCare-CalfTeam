@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
@@ -48,6 +49,34 @@ fun PetDetailScreen(
     // 👇 State untuk memunculkan dialog konfirmasi hapus
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showEditScreen by remember { mutableStateOf(false) }
+
+    // 👇 State status "selesai" (sudah ditemukan / diadopsi)
+    var resolved by remember { mutableStateOf(pet.resolved) }
+    var showResolveDialog by remember { mutableStateOf(false) }
+    var isUpdatingResolved by remember { mutableStateOf(false) }
+
+    val isMissing = pet.status.equals("Missing", ignoreCase = true)
+    val resolvedLabel = if (isMissing) "Sudah Ditemukan" else "Sudah Diadopsi"
+    val markActionLabel = if (isMissing) "Tandai Sudah Ditemukan" else "Tandai Sudah Diadopsi"
+    val isOwner = currentUserId.isNotEmpty() && currentUserId == pet.userId
+
+    fun setResolved(value: Boolean) {
+        coroutineScope.launch {
+            isUpdatingResolved = true
+            val result = petRepository.setPetResolved(pet.id, value)
+            isUpdatingResolved = false
+            if (result.isSuccess) {
+                resolved = value
+                Toast.makeText(
+                    context,
+                    if (value) "Ditandai: $resolvedLabel ✓" else "Postingan dibuka kembali",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                Toast.makeText(context, "Gagal: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     // Tangani tombol "Back" bawaan HP
     BackHandler {
@@ -96,6 +125,35 @@ fun PetDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    // 👇 Pop-up Konfirmasi Tandai Selesai
+    if (showResolveDialog) {
+        AlertDialog(
+            onDismissRequest = { showResolveDialog = false },
+            title = { Text(markActionLabel) },
+            text = {
+                Text(
+                    if (isMissing)
+                        "Tandai hewan ini sudah ditemukan? Postingan tetap tampil dengan label \"Selesai\" dan bisa dibuka kembali."
+                    else
+                        "Tandai hewan ini sudah diadopsi? Postingan tetap tampil dengan label \"Selesai\" dan bisa dibuka kembali."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showResolveDialog = false
+                    setResolved(true)
+                }) {
+                    Text("Ya, Tandai", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResolveDialog = false }) {
                     Text("Batal")
                 }
             }
@@ -190,6 +248,23 @@ fun PetDetailScreen(
                 }
             }
 
+            // Badge "Selesai" (sudah ditemukan / diadopsi)
+            if (resolved) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF2E7D32).copy(alpha = 0.12f),
+                    contentColor = Color(0xFF2E7D32)
+                ) {
+                    Text(
+                        text = "✓ $resolvedLabel",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // Ras/Breed
@@ -244,6 +319,45 @@ fun PetDetailScreen(
                 Icon(Icons.Default.Call, contentDescription = "Hubungi", tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Hubungi Pemilik", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+
+            // Tombol Tandai Selesai / Buka Kembali (HANYA PEMILIK)
+            if (isOwner) {
+                Spacer(modifier = Modifier.height(12.dp))
+                if (!resolved) {
+                    Button(
+                        onClick = { showResolveDialog = true },
+                        enabled = !isUpdatingResolved,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        if (isUpdatingResolved) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                        } else {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(markActionLabel, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { setResolved(false) },
+                        enabled = !isUpdatingResolved,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        if (isUpdatingResolved) {
+                            CircularProgressIndicator(color = Color(0xFF00666E), modifier = Modifier.size(24.dp))
+                        } else {
+                            Text("Buka Kembali", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00666E))
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(32.dp))

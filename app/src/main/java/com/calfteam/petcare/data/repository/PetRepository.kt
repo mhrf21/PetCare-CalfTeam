@@ -45,11 +45,12 @@ class PetRepository(client: Client) {
                 "age" to age,
                 "description" to desc,
                 "status" to type,
-                "imageId" to fileId, // 👈 Ganti jadi "imageId" dan simpan fileId-nya saja (bukan URL penuh)
+                "imageId" to fileId,
                 "contact" to contact,
                 "location" to location,
                 "uploaderName" to uploaderName,
-                "userId" to userId
+                "userId" to userId,
+                "resolved" to false
             )
             databases.createDocument(
                 databaseId = Constants.DATABASE_ID,
@@ -94,7 +95,8 @@ class PetRepository(client: Client) {
                     description = doc.data["description"]?.toString() ?: "",
                     contact = doc.data["contact"]?.toString() ?: "",
                     uploaderName = doc.data["uploaderName"]?.toString() ?: "Anonim",
-                    userId = doc.data["userId"]?.toString() ?: ""
+                    userId = doc.data["userId"]?.toString() ?: "",
+                    resolved = doc.data["resolved"] as? Boolean ?: false
                 )
             }
             Result.success(pets)
@@ -254,6 +256,21 @@ class PetRepository(client: Client) {
         } catch (e: Exception) {
             Log.e("EditPet", "❌ ERROR UPDATE GAMBAR: ${e.message}", e)
             e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    // 7. TANDAI SELESAI / BUKA KEMBALI (update field "resolved")
+    suspend fun setPetResolved(documentId: String, resolved: Boolean): Result<String> {
+        return try {
+            databases.updateDocument(
+                databaseId = Constants.DATABASE_ID,
+                collectionId = Constants.COLLECTION_PETS_ID,
+                documentId = documentId,
+                data = mapOf("resolved" to resolved)
+            )
+            Result.success(if (resolved) "Ditandai selesai" else "Dibuka kembali")
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }
