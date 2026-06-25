@@ -4,39 +4,29 @@ import android.app.Activity
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.calfteam.petcare.MainActivity
 import com.calfteam.petcare.viewmodel.AuthViewModel
 
-val TealColor = Color(0xFF0B7B7D)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val loginStatus by viewModel.loginStatus.collectAsState()
@@ -68,112 +58,59 @@ fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
-            .padding(horizontal = 24.dp, vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(BackgroundColor)
+            .verticalScroll(rememberScrollState())
     ) {
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
-            text = "Welcome Back",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color.Black
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Log in to manage your pets and applications.",
-            fontSize = 14.sp,
-            color = Color.DarkGray,
-            textAlign = TextAlign.Center
+        // Header dengan logo + gradient
+        AuthHeader(
+            title = "Selamat Datang Kembali",
+            subtitle = "Masuk untuk mengelola postingan hewan kesayanganmu 🐾"
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Email Address") },
-            placeholder = { Text("hello@petcare.com") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = TealColor,
-                unfocusedBorderColor = Color.LightGray,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Password") },
-            placeholder = { Text("••••••••") },
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            trailingIcon = {
-                val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(imageVector = image, contentDescription = "Toggle password visibility")
-                }
-            },
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = TealColor,
-                unfocusedBorderColor = Color.LightGray,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White
-            )
-        )
-
-        Text(
-            text = "Forgot password?",
-            fontSize = 12.sp,
-            color = Color.Gray,
-            modifier = Modifier
-                .align(Alignment.End)
-                .padding(top = 8.dp)
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Button(
-            onClick = {
-                viewModel.signIn(email, password)
-            },
+        // Form section
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = TealColor)
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(text = "Sign In", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        }
+            AuthTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = "Email",
+                icon = Icons.Default.Email,
+                placeholder = "nama@email.com",
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Email
+            )
 
-        Spacer(modifier = Modifier.weight(1f))
+            AuthPasswordField(
+                value = password,
+                onValueChange = { password = it }
+            )
 
-        Row(
-            modifier = Modifier.padding(bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "Don't have an account? ", color = Color.Gray, fontSize = 14.sp)
-            Text(
-                text = "Sign Up",
-                color = Color(0xFFB06A26),
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                modifier = Modifier.clickable {
-                    val intent = Intent(context, SignUpActivity::class.java)
-                    context.startActivity(intent)
-                }
+            ForgotPasswordLink(onClick = {
+                Toast.makeText(context, "Hubungi developer untuk reset password", Toast.LENGTH_SHORT).show()
+            })
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            AuthPrimaryButton(
+                text = "Masuk",
+                icon = Icons.AutoMirrored.Filled.Login,
+                onClick = { viewModel.signIn(email, password) },
+                isLoading = loginStatus == "Loading..."
             )
         }
+
+        // Footer link
+        AuthFooterLink(
+            prefix = "Belum punya akun?",
+            actionText = "Daftar di sini",
+            onClick = {
+                val intent = Intent(context, SignUpActivity::class.java)
+                context.startActivity(intent)
+            }
+        )
     }
 }
 

@@ -1,24 +1,22 @@
 package com.calfteam.petcare.ui.auth
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.calfteam.petcare.viewmodel.AuthViewModel
 
 @Composable
@@ -33,96 +31,84 @@ fun SignUpScreen(
     val context = LocalContext.current
     val signUpStatus by viewModel.signUpStatus.collectAsState()
 
+    LaunchedEffect(signUpStatus) {
+        if (signUpStatus == "Success") {
+            Toast.makeText(context, "Daftar Berhasil! Silakan Login", Toast.LENGTH_SHORT).show()
+            onNavigateToLogin()
+        } else if (signUpStatus.startsWith("Error")) {
+            Toast.makeText(context, signUpStatus, Toast.LENGTH_LONG).show()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .background(BackgroundColor)
+            .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            text = "Daftar PetCare",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF00666E)
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Bergabunglah dengan komunitas pecinta hewan!",
-            color = Color.Gray
+        // Header dengan logo + gradient
+        AuthHeader(
+            title = "Daftar PetCare",
+            subtitle = "Bergabung dengan komunitas pencinta hewan dan mulai buat postingan pertamamu 🐶🐱"
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Nama Lengkap") },
-            leadingIcon = { Icon(Icons.Filled.Person, contentDescription = "Name") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            leadingIcon = { Icon(Icons.Filled.Email, contentDescription = "Email") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = "Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Button(
-            onClick = {
-                if (name.isNotBlank() && email.isNotBlank() && password.length >= 8) {
-                    viewModel.signUp(name, email, password)
-                } else {
-                    Toast.makeText(context, "Isi semua data & password min 8 karakter", Toast.LENGTH_SHORT).show()
-                }
-            },
+        // Form section
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00666E)),
-            shape = RoundedCornerShape(12.dp)
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(text = "Daftar Sekarang", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            AuthTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = "Nama Lengkap",
+                icon = Icons.Default.Person,
+                placeholder = "Cth: Alex Johnson"
+            )
+
+            AuthTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = "Email",
+                icon = Icons.Default.Email,
+                placeholder = "nama@email.com",
+                keyboardType = KeyboardType.Email
+            )
+
+            AuthPasswordField(
+                value = password,
+                onValueChange = { password = it },
+                imeAction = ImeAction.Done
+            )
+
+            PasswordStrengthIndicator(password = password)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            AuthPrimaryButton(
+                text = "Daftar Sekarang",
+                icon = Icons.Default.PersonAdd,
+                onClick = {
+                    if (name.isNotBlank() && email.isNotBlank() && password.length >= 8) {
+                        viewModel.signUp(name, email, password)
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Isi semua data & password min 8 karakter",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                isLoading = signUpStatus == "Loading..."
+            )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        TextButton(onClick = onNavigateToLogin) {
-            Text("Sudah punya akun? Masuk di sini", color = Color(0xFF00666E))
-        }
-
-        LaunchedEffect(signUpStatus) {
-            if (signUpStatus == "Success") {
-                Toast.makeText(context, "Daftar Berhasil! Silakan Login", Toast.LENGTH_SHORT).show()
-                onNavigateToLogin()
-            } else if (signUpStatus.startsWith("Error")) {
-                Toast.makeText(context, signUpStatus, Toast.LENGTH_LONG).show()
-            }
-        }
+        // Footer link
+        AuthFooterLink(
+            prefix = "Sudah punya akun?",
+            actionText = "Masuk di sini",
+            onClick = onNavigateToLogin
+        )
     }
 }
