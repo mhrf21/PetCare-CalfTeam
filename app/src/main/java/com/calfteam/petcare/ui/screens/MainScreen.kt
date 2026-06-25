@@ -125,6 +125,7 @@ fun MainScreen(userName: String) {
                 when (selectedItem) {
                     0 -> HomeScreen(
                         petRepository = petRepository,
+                        userName = displayName,
                         onOpenSearch = { selectedItem = 1 },
                         onPetSelected = { pet -> selectedPet = pet }
                     )
