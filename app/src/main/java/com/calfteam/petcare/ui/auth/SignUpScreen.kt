@@ -48,8 +48,7 @@ fun SignUpScreen(
     ) {
         // Header dengan logo + gradient
         AuthHeader(
-            title = "Daftar PetCare",
-            subtitle = "Bergabung dengan komunitas pencinta hewan dan mulai buat postingan pertamamu 🐶🐱"
+            title = "Daftar PetCare"
         )
 
         // Form section

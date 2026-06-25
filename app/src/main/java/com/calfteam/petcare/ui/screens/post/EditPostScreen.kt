@@ -30,6 +30,7 @@ import androidx.core.content.ContextCompat
 import com.calfteam.petcare.data.model.Pet
 import com.calfteam.petcare.data.repository.LocationRepository
 import com.calfteam.petcare.data.repository.PetRepository
+import com.calfteam.petcare.utils.LocationUtils
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,12 +52,29 @@ fun EditPostScreen(
     var description by remember { mutableStateOf(pet.description) }
     var contact by remember { mutableStateOf(pet.contact) }
     var location by remember { mutableStateOf(pet.distance) }
+    var address by remember { mutableStateOf(pet.address) }
     var listingType by remember { mutableStateOf(pet.status) }
 
     // State gambar
     var selectedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var isUpdating by remember { mutableStateOf(false) }
     var isGettingLocation by remember { mutableStateOf(false) }
+
+    // State untuk Map Picker overlay
+    var showMapPicker by remember { mutableStateOf(false) }
+
+    // Reverse geocode sekali jika post lama punya koordinat tapi belum ada address
+    LaunchedEffect(Unit) {
+        if (address.isBlank() && location.contains(",")) {
+            val parts = location.split(",")
+            val lat = parts.getOrNull(0)?.trim()?.toDoubleOrNull()
+            val lng = parts.getOrNull(1)?.trim()?.toDoubleOrNull()
+            if (lat != null && lng != null) {
+                val resolved = LocationUtils.reverseGeocode(context, lat, lng)
+                if (resolved != null) address = resolved
+            }
+        }
+    }
 
     // Permission launcher untuk location
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -73,7 +91,14 @@ fun EditPostScreen(
                 if (result.isSuccess) {
                     val (lat, lng) = result.getOrNull() ?: return@launch
                     location = "$lat,$lng"
-                    Toast.makeText(context, "Lokasi didapat", Toast.LENGTH_SHORT).show()
+                    val resolvedAddress = LocationUtils.reverseGeocode(context, lat, lng)
+                    address = resolvedAddress ?: ""
+                    Toast.makeText(
+                        context,
+                        if (resolvedAddress != null) "Lokasi & alamat didapat"
+                        else "Lokasi didapat (alamat tidak tersedia)",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 } else {
                     Toast.makeText(
                         context,
@@ -112,7 +137,14 @@ fun EditPostScreen(
                 if (result.isSuccess) {
                     val (lat, lng) = result.getOrNull() ?: return@launch
                     location = "$lat,$lng"
-                    Toast.makeText(context, "Lokasi didapat", Toast.LENGTH_SHORT).show()
+                    val resolvedAddress = LocationUtils.reverseGeocode(context, lat, lng)
+                    address = resolvedAddress ?: ""
+                    Toast.makeText(
+                        context,
+                        if (resolvedAddress != null) "Lokasi & alamat didapat"
+                        else "Lokasi didapat (alamat tidak tersedia)",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 } else {
                     Toast.makeText(
                         context,
@@ -122,6 +154,31 @@ fun EditPostScreen(
                 }
             }
         }
+    }
+
+    fun resetLocation() {
+        location = ""
+        address = ""
+    }
+
+    // Map picker overlay (full-screen) — tampil di atas form saat aktif
+    if (showMapPicker) {
+        val initialCoords = location.split(",").let { parts ->
+            val lat = parts.getOrNull(0)?.trim()?.toDoubleOrNull()
+            val lng = parts.getOrNull(1)?.trim()?.toDoubleOrNull()
+            if (lat != null && lng != null) Pair(lat, lng) else null
+        }
+        MapPickerScreen(
+            initialLat = initialCoords?.first,
+            initialLng = initialCoords?.second,
+            onConfirm = { lat, lng, addr ->
+                location = "$lat,$lng"
+                address = addr
+                showMapPicker = false
+            },
+            onCancel = { showMapPicker = false }
+        )
+        return
     }
 
     Column(
@@ -229,16 +286,21 @@ fun EditPostScreen(
             if (listingType.equals("Adoption", true)) {
                 AdoptionLocationSection(
                     location = location,
+                    address = address,
                     isGettingLocation = isGettingLocation,
                     onGetLocation = { requestGps() },
-                    onReset = { location = "" }
+                    onReset = { resetLocation() },
+                    onOpenMapPicker = { showMapPicker = true }
                 )
             } else {
                 MissingLocationSection(
+                    address = address,
                     location = location,
                     isGettingLocation = isGettingLocation,
-                    onLocationChange = { location = it },
-                    onGetLocation = { requestGps() }
+                    onAddressChange = { address = it },
+                    onGetLocation = { requestGps() },
+                    onReset = { resetLocation() },
+                    onOpenMapPicker = { showMapPicker = true }
                 )
             }
 
@@ -309,7 +371,8 @@ fun EditPostScreen(
                                 desc = description,
                                 type = listingType,
                                 contact = contact,
-                                location = location
+                                location = location,
+                                address = address
                             )
 
                             if (updateResult.isSuccess) {

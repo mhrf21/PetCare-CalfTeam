@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.LocationSearching
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -346,9 +347,11 @@ internal fun IconTextField(
 @Composable
 internal fun AdoptionLocationSection(
     location: String,
+    address: String,
     isGettingLocation: Boolean,
     onGetLocation: () -> Unit,
     onReset: () -> Unit,
+    onOpenMapPicker: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.padding(horizontal = 20.dp)) {
@@ -383,73 +386,137 @@ internal fun AdoptionLocationSection(
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            MapPickerLink(onClick = onOpenMapPicker)
         } else {
             LocationFilledCard(
+                address = address,
                 location = location,
                 onReset = onReset
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            MapPickerLink(onClick = onOpenMapPicker, isEdit = true)
         }
     }
 }
 
 /**
  * Location section untuk listing Missing (manual + GPS helper).
+ * `address` = teks terbaca (display), `location` = "lat,lng" (untuk distance).
  */
 @Composable
 internal fun MissingLocationSection(
+    address: String,
     location: String,
     isGettingLocation: Boolean,
-    onLocationChange: (String) -> Unit,
+    onAddressChange: (String) -> Unit,
     onGetLocation: () -> Unit,
+    onReset: () -> Unit,
+    onOpenMapPicker: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.padding(horizontal = 20.dp)) {
-        IconTextField(
-            value = location,
-            onValueChange = onLocationChange,
-            label = "Lokasi Terakhir Dilihat",
-            icon = Icons.Default.LocationOn,
-            placeholder = "Cth: Jakarta Barat atau -6.20,106.84"
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        OutlinedButton(
-            onClick = onGetLocation,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(46.dp),
-            shape = RoundedCornerShape(12.dp),
-            enabled = !isGettingLocation,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandTeal),
-            border = BorderStroke(1.dp, BrandTeal.copy(alpha = 0.5f))
-        ) {
-            if (isGettingLocation) {
-                CircularProgressIndicator(
-                    color = BrandTeal,
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Icon(
-                    Icons.Default.MyLocation,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "Helper: Isi dari GPS saya",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+        if (address.isNotEmpty() || location.isNotEmpty()) {
+            // Tampilkan filled card dengan opsi reset
+            LocationFilledCard(
+                address = address,
+                location = location,
+                onReset = onReset
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            MapPickerLink(onClick = onOpenMapPicker, isEdit = true)
+        } else {
+            // Empty state: input manual
+            IconTextField(
+                value = address,
+                onValueChange = onAddressChange,
+                label = "Lokasi Terakhir Dilihat",
+                icon = Icons.Default.LocationOn,
+                placeholder = "Cth: Jakarta Barat, Kemang, atau alamat lengkap"
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = onGetLocation,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp),
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isGettingLocation,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandTeal),
+                border = BorderStroke(1.dp, BrandTeal.copy(alpha = 0.5f))
+            ) {
+                if (isGettingLocation) {
+                    CircularProgressIndicator(
+                        color = BrandTeal,
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.MyLocation,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Helper: Isi dari GPS saya",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            MapPickerLink(onClick = onOpenMapPicker)
         }
+    }
+}
+
+/**
+ * Link kecil di bawah location section: "Atau pilih di peta".
+ * Membuka MapPickerScreen.
+ */
+@Composable
+private fun MapPickerLink(
+    onClick: () -> Unit,
+    isEdit: Boolean = false
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Map,
+            contentDescription = null,
+            tint = BrandTeal,
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = if (isEdit) "Atau pilih lokasi lain di peta"
+            else "Atau pilih lokasi di peta",
+            fontSize = 12.sp,
+            color = BrandTeal,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
 @Composable
 private fun LocationFilledCard(
+    address: String,
     location: String,
     onReset: () -> Unit
 ) {
+    // Prioritaskan address untuk display; fallback ke koordinat kalau address kosong
+    val displayPrimary = address.ifBlank { location }
+    val showCoordinates = address.isNotBlank() &&
+            location.isNotBlank() &&
+            location != address
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -486,13 +553,22 @@ private fun LocationFilledCard(
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = location,
+                text = displayPrimary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+            if (showCoordinates) {
+                Text(
+                    text = location,
+                    fontSize = 10.sp,
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
         TextButton(
             onClick = onReset,

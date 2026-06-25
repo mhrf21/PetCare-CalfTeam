@@ -44,12 +44,11 @@ internal val DividerColor = Color(0xFFE5E7EB)
 
 /**
  * Header section untuk auth screen: gradient teal lembut dengan logo,
- * nama brand, dan tagline. Menggantikan header teks polos.
+ * nama brand, dan judul. Menggantikan header teks polos.
  */
 @Composable
 internal fun AuthHeader(
     title: String,
-    subtitle: String,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -106,14 +105,6 @@ internal fun AuthHeader(
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary,
                 textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = subtitle,
-                fontSize = 13.sp,
-                color = TextSecondary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 32.dp)
             )
         }
     }

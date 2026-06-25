@@ -36,7 +36,8 @@ class PetRepository(client: Client) {
         name: String, breed: String, age: String, desc: String,
         type: String, fileId: String, contact: String, location: String,
         uploaderName: String,
-        userId: String
+        userId: String,
+        address: String = ""
     ): Result<Unit> {
         return try {
             val data = mapOf(
@@ -48,6 +49,7 @@ class PetRepository(client: Client) {
                 "imageId" to fileId,
                 "contact" to contact,
                 "location" to location,
+                "address" to address,
                 "uploaderName" to uploaderName,
                 "userId" to userId,
                 "resolved" to false
@@ -96,7 +98,8 @@ class PetRepository(client: Client) {
                     contact = doc.data["contact"]?.toString() ?: "",
                     uploaderName = doc.data["uploaderName"]?.toString() ?: "Anonim",
                     userId = doc.data["userId"]?.toString() ?: "",
-                    resolved = doc.data["resolved"] as? Boolean ?: false
+                    resolved = doc.data["resolved"] as? Boolean ?: false,
+                    address = doc.data["address"]?.toString() ?: ""
                 )
             }
             Result.success(pets)
@@ -182,11 +185,12 @@ class PetRepository(client: Client) {
         desc: String,
         type: String,
         contact: String,
-        location: String
+        location: String,
+        address: String = ""
     ): Result<String> {
         return try {
             Log.d("EditPet", "=== MULAI EDIT: $documentId ===")
-            
+
             val data = mapOf(
                 "petName" to name,
                 "type" to breed,
@@ -194,16 +198,17 @@ class PetRepository(client: Client) {
                 "description" to desc,
                 "status" to type,
                 "contact" to contact,
-                "location" to location
+                "location" to location,
+                "address" to address
             )
-            
+
             databases.updateDocument(
                 databaseId = Constants.DATABASE_ID,
                 collectionId = Constants.COLLECTION_PETS_ID,
                 documentId = documentId,
                 data = data
             )
-            
+
             Log.d("EditPet", "✓ Postingan berhasil diupdate: $documentId")
             Result.success("Berhasil update postingan")
         } catch (e: Exception) {

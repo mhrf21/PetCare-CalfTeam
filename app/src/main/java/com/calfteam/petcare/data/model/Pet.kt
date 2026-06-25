@@ -14,5 +14,12 @@ data class Pet(
     val contact: String = "",
     val uploaderName: String = "Anonim",
     val userId: String = "",
-    val resolved: Boolean = false
+    val resolved: Boolean = false,
+    /**
+     * Alamat terbaca (contoh: "Kebayoran Baru, Jakarta Selatan").
+     * Berasal dari reverse geocoding saat user mengaktifkan GPS,
+     * atau input manual untuk post Missing.
+     * Kosong artinya user belum pernah menyimpan alamat / post lama sebelum fitur ini ada.
+     */
+    val address: String = ""
 )

@@ -334,7 +334,7 @@ fun PetDetailScreen(
             QuickInfoGrid(
                 breed = pet.breed,
                 age = pet.age,
-                distance = pet.distance
+                distance = pet.address.ifBlank { pet.distance }
             )
 
             Spacer(modifier = Modifier.height(20.dp))

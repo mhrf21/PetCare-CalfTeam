@@ -63,8 +63,7 @@ fun LoginScreen(viewModel: AuthViewModel = viewModel()) {
     ) {
         // Header dengan logo + gradient
         AuthHeader(
-            title = "Selamat Datang Kembali",
-            subtitle = "Masuk untuk mengelola postingan hewan kesayanganmu 🐾"
+            title = "Selamat Datang Kembali"
         )
 
         // Form section

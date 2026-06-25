@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.calfteam.petcare.data.repository.LocationRepository
 import com.calfteam.petcare.data.repository.PetRepository
+import com.calfteam.petcare.utils.LocationUtils
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,11 +49,15 @@ fun AddPostScreen(
     var description by remember { mutableStateOf("") }
     var contact by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
     var listingType by remember { mutableStateOf("Adoption") }
 
     var selectedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var isUploading by remember { mutableStateOf(false) }
     var isGettingLocation by remember { mutableStateOf(false) }
+
+    // State untuk Map Picker overlay
+    var showMapPicker by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -68,7 +73,15 @@ fun AddPostScreen(
                 if (result.isSuccess) {
                     val (lat, lng) = result.getOrNull() ?: return@launch
                     location = "$lat,$lng"
-                    Toast.makeText(context, "Lokasi didapat", Toast.LENGTH_SHORT).show()
+                    // Reverse geocode: koordinat → alamat terbaca
+                    val resolvedAddress = LocationUtils.reverseGeocode(context, lat, lng)
+                    address = resolvedAddress ?: ""
+                    Toast.makeText(
+                        context,
+                        if (resolvedAddress != null) "Lokasi & alamat didapat"
+                        else "Lokasi didapat (alamat tidak tersedia)",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 } else {
                     Toast.makeText(
                         context,
@@ -107,7 +120,14 @@ fun AddPostScreen(
                 if (result.isSuccess) {
                     val (lat, lng) = result.getOrNull() ?: return@launch
                     location = "$lat,$lng"
-                    Toast.makeText(context, "Lokasi didapat", Toast.LENGTH_SHORT).show()
+                    val resolvedAddress = LocationUtils.reverseGeocode(context, lat, lng)
+                    address = resolvedAddress ?: ""
+                    Toast.makeText(
+                        context,
+                        if (resolvedAddress != null) "Lokasi & alamat didapat"
+                        else "Lokasi didapat (alamat tidak tersedia)",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 } else {
                     Toast.makeText(
                         context,
@@ -117,6 +137,31 @@ fun AddPostScreen(
                 }
             }
         }
+    }
+
+    fun resetLocation() {
+        location = ""
+        address = ""
+    }
+
+    // Map picker overlay (full-screen) — tampil di atas form saat aktif
+    if (showMapPicker) {
+        val initialCoords = location.split(",").let { parts ->
+            val lat = parts.getOrNull(0)?.trim()?.toDoubleOrNull()
+            val lng = parts.getOrNull(1)?.trim()?.toDoubleOrNull()
+            if (lat != null && lng != null) Pair(lat, lng) else null
+        }
+        MapPickerScreen(
+            initialLat = initialCoords?.first,
+            initialLng = initialCoords?.second,
+            onConfirm = { lat, lng, addr ->
+                location = "$lat,$lng"
+                address = addr
+                showMapPicker = false
+            },
+            onCancel = { showMapPicker = false }
+        )
+        return
     }
 
     Column(
@@ -212,16 +257,21 @@ fun AddPostScreen(
         if (listingType == "Adoption") {
             AdoptionLocationSection(
                 location = location,
+                address = address,
                 isGettingLocation = isGettingLocation,
                 onGetLocation = { requestGps() },
-                onReset = { location = "" }
+                onReset = { resetLocation() },
+                onOpenMapPicker = { showMapPicker = true }
             )
         } else {
             MissingLocationSection(
+                address = address,
                 location = location,
                 isGettingLocation = isGettingLocation,
-                onLocationChange = { location = it },
-                onGetLocation = { requestGps() }
+                onAddressChange = { address = it },
+                onGetLocation = { requestGps() },
+                onReset = { resetLocation() },
+                onOpenMapPicker = { showMapPicker = true }
             )
         }
 
@@ -288,7 +338,8 @@ fun AddPostScreen(
                                 contact = contact,
                                 location = location,
                                 uploaderName = userName,
-                                userId = userId
+                                userId = userId,
+                                address = address
                             )
                             if (dbResult.isSuccess) {
                                 Toast.makeText(context, "Berhasil Posting!", Toast.LENGTH_SHORT).show()

@@ -103,17 +103,17 @@ fun PetCard(pet: Pet, onClick: () -> Unit = {}) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Jarak/Lokasi
+                // Alamat / Lokasi — prioritaskan address terbaca, fallback ke distance
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.LocationOn,
                         contentDescription = "Location",
-                        tint = Color(0xFF00666E), // Warna Teal khas PetCare lu
+                        tint = Color(0xFF00666E),
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = pet.distance,
+                        text = pet.address.ifBlank { pet.distance },
                         fontSize = 12.sp,
                         color = Color.DarkGray,
                         maxLines = 1,
