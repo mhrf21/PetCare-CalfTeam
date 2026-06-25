@@ -2,33 +2,31 @@ package com.calfteam.petcare.ui.screens.post
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import coil.compose.AsyncImage
 import com.calfteam.petcare.data.model.Pet
 import com.calfteam.petcare.data.repository.LocationRepository
 import com.calfteam.petcare.data.repository.PetRepository
@@ -56,7 +54,7 @@ fun EditPostScreen(
     var listingType by remember { mutableStateOf(pet.status) }
 
     // State gambar
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var isUpdating by remember { mutableStateOf(false) }
     var isGettingLocation by remember { mutableStateOf(false) }
 
@@ -93,277 +91,192 @@ fun EditPostScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri -> selectedImageUri = uri }
 
+    fun requestGps() {
+        if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        } else {
+            coroutineScope.launch {
+                isGettingLocation = true
+                val result = locationRepository.getCurrentLocation()
+                isGettingLocation = false
+
+                if (result.isSuccess) {
+                    val (lat, lng) = result.getOrNull() ?: return@launch
+                    location = "$lat,$lng"
+                    Toast.makeText(context, "✓ Lokasi didapat", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Gagal: ${result.exceptionOrNull()?.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(BackgroundColor)
     ) {
         // Top Bar
         TopAppBar(
-            title = { Text("Edit Postingan", fontWeight = FontWeight.Bold) },
+            title = {
+                Text(
+                    "Edit Postingan",
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            },
             navigationIcon = {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = TextPrimary
+                    )
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = BackgroundColor
+            )
         )
 
         // Form Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Pemilih Gambar (Opsional - untuk ganti foto)
-            Box(
+            // 1. Image picker (fallback ke gambar existing)
+            SectionHeader(emoji = "📸", title = "Foto Hewan")
+            Spacer(modifier = Modifier.height(12.dp))
+            PostImagePicker(
+                imageUri = selectedImageUri,
+                fallbackUrl = pet.imageUrl,
+                onPick = { galleryLauncher.launch("image/*") }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 2. Listing type
+            SectionHeader(emoji = "🏷️", title = "Tipe Listing")
+            Spacer(modifier = Modifier.height(12.dp))
+            ListingTypeSelector(
+                selected = listingType,
+                onSelect = { listingType = it }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 3. Detail form
+            SectionHeader(emoji = "📝", title = "Detail Hewan")
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFFF0F0F0))
-                    .clickable { galleryLauncher.launch("image/*") },
-                contentAlignment = Alignment.Center
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (selectedImageUri != null) {
-                    AsyncImage(
-                        model = selectedImageUri,
-                        contentDescription = "New Image",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        AsyncImage(
-                            model = pet.imageUrl,
-                            contentDescription = "Current Image",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                }
-            }
-
-            Text(
-                "Tap untuk ganti foto (opsional)",
-                fontSize = 12.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Pilihan Tipe Listing
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = listingType == "Adoption",
-                    onClick = { listingType = "Adoption" },
-                    label = { Text("Adopsi") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFF00666E),
-                        selectedLabelColor = Color.White
-                    )
+                IconTextField(
+                    value = petName,
+                    onValueChange = { petName = it },
+                    label = "Nama Hewan",
+                    icon = Icons.Default.Pets,
+                    placeholder = "Cth: Mochi"
                 )
-                FilterChip(
-                    selected = listingType == "Missing",
-                    onClick = { listingType = "Missing" },
-                    label = { Text("Hilang (Missing)") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFFB06A26),
-                        selectedLabelColor = Color.White
-                    )
+                PetTypeDropdown(
+                    value = breed,
+                    onValueChange = { breed = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                IconTextField(
+                    value = age,
+                    onValueChange = { age = it },
+                    label = "Umur",
+                    icon = Icons.Default.CalendarToday,
+                    placeholder = "Cth: 2 Bulan"
+                )
+                IconTextField(
+                    value = contact,
+                    onValueChange = { contact = it },
+                    label = "Kontak (No HP)",
+                    icon = Icons.Default.Phone,
+                    placeholder = "08xxxxxxxxxx",
+                    keyboardType = KeyboardType.Phone
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Form Input
-            OutlinedTextField(
-                value = petName,
-                onValueChange = { petName = it },
-                label = { Text("Nama Hewan") },
-                modifier = Modifier.fillMaxWidth()
+            // 4. Location
+            SectionHeader(
+                emoji = "📍",
+                title = if (listingType.equals("Adoption", true)) "Lokasi Hewan" else "Lokasi Terakhir Dilihat"
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            PetTypeDropdown(
-                value = breed,
-                onValueChange = { breed = it },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = age,
-                onValueChange = { age = it },
-                label = { Text("Umur (cth: 2 Bulan)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = contact,
-                onValueChange = { contact = it },
-                label = { Text("Kontak (No HP)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Location Section dengan Hybrid GPS
-            if (listingType == "Adoption") {
-                // ADOPTION: GPS Auto-fill
-                Text("📍 Lokasi Hewan (Auto GPS):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                if (location.isEmpty() || location == pet.distance) {
-                    Button(
-                        onClick = {
-                            if (ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.ACCESS_FINE_LOCATION
-                                ) != PackageManager.PERMISSION_GRANTED
-                            ) {
-                                permissionLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.ACCESS_FINE_LOCATION,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION
-                                    )
-                                )
-                            } else {
-                                coroutineScope.launch {
-                                    isGettingLocation = true
-                                    val result = locationRepository.getCurrentLocation()
-                                    isGettingLocation = false
-
-                                    if (result.isSuccess) {
-                                        val (lat, lng) = result.getOrNull() ?: return@launch
-                                        location = "$lat,$lng"
-                                        Toast.makeText(context, "✓ Lokasi didapat", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "Gagal: ${result.exceptionOrNull()?.message}",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00666E)),
-                        enabled = !isGettingLocation,
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(Icons.Default.MyLocation, contentDescription = "Get Location", modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        if (isGettingLocation) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
-                        } else {
-                            Text("Gunakan Lokasi Saya", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                } else {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFF0F0F0)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("✓ Lokasi Terisi", fontSize = 12.sp, color = Color.Gray)
-                            Text(location, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00666E))
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = { location = "" },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6B6B))
-                    ) {
-                        Text("Ubah Lokasi", fontSize = 12.sp)
-                    }
-                }
+            if (listingType.equals("Adoption", true)) {
+                AdoptionLocationSection(
+                    location = location,
+                    isGettingLocation = isGettingLocation,
+                    onGetLocation = { requestGps() },
+                    onReset = { location = "" }
+                )
             } else {
-                // MISSING: Manual Input + GPS Helper
-                Text("📍 Lokasi Terakhir Dilihat:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                OutlinedTextField(
-                    value = location,
-                    onValueChange = { location = it },
-                    label = { Text("Misal: Jakarta Barat atau -6.2088,106.8456") },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Masukkan lokasi terakhir dilihat", fontSize = 12.sp) }
+                MissingLocationSection(
+                    location = location,
+                    isGettingLocation = isGettingLocation,
+                    onLocationChange = { location = it },
+                    onGetLocation = { requestGps() }
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                Button(
-                    onClick = {
-                        if (ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.ACCESS_FINE_LOCATION
-                            ) != PackageManager.PERMISSION_GRANTED
-                        ) {
-                            permissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION
-                                )
-                            )
-                        } else {
-                            coroutineScope.launch {
-                                isGettingLocation = true
-                                val result = locationRepository.getCurrentLocation()
-                                isGettingLocation = false
+            }
 
-                                if (result.isSuccess) {
-                                    val (lat, lng) = result.getOrNull() ?: return@launch
-                                    location = "$lat,$lng"
-                                    Toast.makeText(context, "✓ Lokasi helper diterapkan (bisa diedit)", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(
-                                        context,
-                                        "Gagal: ${result.exceptionOrNull()?.message}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-                        }
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 5. Description
+            SectionHeader(emoji = "💬", title = "Cerita & Deskripsi")
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Deskripsi") },
+                    placeholder = {
+                        Text(
+                            "Cth: Kucing jinak, suka dipeluk, sudah vaksin...",
+                            fontSize = 13.sp
+                        )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(40.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                    enabled = !isGettingLocation,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(Icons.Default.MyLocation, contentDescription = "Get Location", modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    if (isGettingLocation) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp))
-                    } else {
-                        Text("Helper: Lokasi Saya", fontSize = 12.sp)
-                    }
-                }
+                        .height(120.dp),
+                    maxLines = 5,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = BrandTeal,
+                        focusedLabelColor = BrandTeal,
+                        cursorColor = BrandTeal,
+                        unfocusedBorderColor = DividerColor
+                    )
+                )
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Deskripsi Singkat") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp),
-                maxLines = 3
-            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Tombol Update
+            // 6. Tombol Update
             Button(
                 onClick = {
                     if (petName.isEmpty() || breed.isEmpty()) {
@@ -401,7 +314,11 @@ fun EditPostScreen(
                             )
 
                             if (updateResult.isSuccess) {
-                                Toast.makeText(context, "Postingan berhasil diupdate! ✓", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Postingan berhasil diupdate! ✓",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                                 onEditSuccess()
                             } else {
                                 val errorMsg = updateResult.exceptionOrNull()?.message ?: "Error tidak diketahui"
@@ -415,15 +332,32 @@ fun EditPostScreen(
                     }
                 },
                 modifier = Modifier
+                    .padding(horizontal = 20.dp)
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(56.dp),
                 enabled = !isUpdating,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00666E))
+                colors = ButtonDefaults.buttonColors(containerColor = BrandTeal),
+                shape = RoundedCornerShape(16.dp)
             ) {
                 if (isUpdating) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.5.dp
+                    )
                 } else {
-                    Text("Simpan Perubahan", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Simpan Perubahan",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 
