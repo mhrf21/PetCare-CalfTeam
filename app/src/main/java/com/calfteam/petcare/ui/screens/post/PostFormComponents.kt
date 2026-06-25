@@ -48,7 +48,6 @@ internal val DividerColor = Color(0xFFE5E7EB)
  */
 @Composable
 internal fun SectionHeader(
-    emoji: String,
     title: String,
     modifier: Modifier = Modifier
 ) {
@@ -58,8 +57,6 @@ internal fun SectionHeader(
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = emoji, fontSize = 18.sp)
-        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = title,
             fontSize = 16.sp,
@@ -483,7 +480,7 @@ private fun LocationFilledCard(
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Lokasi Terisi ✓",
+                text = "Lokasi Terisi",
                 fontSize = 11.sp,
                 color = TextSecondary,
                 fontWeight = FontWeight.Medium

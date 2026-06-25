@@ -73,7 +73,7 @@ fun EditPostScreen(
                 if (result.isSuccess) {
                     val (lat, lng) = result.getOrNull() ?: return@launch
                     location = "$lat,$lng"
-                    Toast.makeText(context, "✓ Lokasi didapat", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Lokasi didapat", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(
                         context,
@@ -112,7 +112,7 @@ fun EditPostScreen(
                 if (result.isSuccess) {
                     val (lat, lng) = result.getOrNull() ?: return@launch
                     location = "$lat,$lng"
-                    Toast.makeText(context, "✓ Lokasi didapat", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Lokasi didapat", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(
                         context,
@@ -159,7 +159,7 @@ fun EditPostScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             // 1. Image picker (fallback ke gambar existing)
-            SectionHeader(emoji = "📸", title = "Foto Hewan")
+            SectionHeader(title = "Foto Hewan")
             Spacer(modifier = Modifier.height(12.dp))
             PostImagePicker(
                 imageUri = selectedImageUri,
@@ -170,7 +170,7 @@ fun EditPostScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // 2. Listing type
-            SectionHeader(emoji = "🏷️", title = "Tipe Listing")
+            SectionHeader(title = "Tipe Listing")
             Spacer(modifier = Modifier.height(12.dp))
             ListingTypeSelector(
                 selected = listingType,
@@ -180,7 +180,7 @@ fun EditPostScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // 3. Detail form
-            SectionHeader(emoji = "📝", title = "Detail Hewan")
+            SectionHeader(title = "Detail Hewan")
             Spacer(modifier = Modifier.height(12.dp))
 
             Column(
@@ -222,7 +222,6 @@ fun EditPostScreen(
 
             // 4. Location
             SectionHeader(
-                emoji = "📍",
                 title = if (listingType.equals("Adoption", true)) "Lokasi Hewan" else "Lokasi Terakhir Dilihat"
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -246,7 +245,7 @@ fun EditPostScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // 5. Description
-            SectionHeader(emoji = "💬", title = "Cerita & Deskripsi")
+            SectionHeader(title = "Cerita & Deskripsi")
             Spacer(modifier = Modifier.height(12.dp))
 
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -316,7 +315,7 @@ fun EditPostScreen(
                             if (updateResult.isSuccess) {
                                 Toast.makeText(
                                     context,
-                                    "Postingan berhasil diupdate! ✓",
+                                    "Postingan berhasil diupdate!",
                                     Toast.LENGTH_SHORT
                                 ).show()
                                 onEditSuccess()

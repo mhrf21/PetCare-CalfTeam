@@ -18,14 +18,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -271,26 +268,6 @@ fun EditProfileScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // ===== SECTION: Tips =====
-            SectionCard(emoji = "🔒", title = "Tips Keamanan") {
-                TipRow(
-                    icon = Icons.Default.CheckCircle,
-                    text = "Perubahan nama akan terlihat di semua postinganmu."
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                TipRow(
-                    icon = Icons.Default.CheckCircle,
-                    text = "Email baru harus diverifikasi setelah disimpan."
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                TipRow(
-                    icon = Icons.Default.Security,
-                    text = "Password tidak pernah ditampilkan di layar demi keamananmu."
-                )
-            }
-
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
@@ -318,54 +295,29 @@ private fun ProfileHeader(name: String) {
             .padding(horizontal = 24.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Avatar dengan gradient + shadow + edit badge
+        // Avatar dengan gradient + shadow
         Box(
-            contentAlignment = Alignment.BottomEnd
+            modifier = Modifier
+                .size(96.dp)
+                .shadow(
+                    elevation = 8.dp,
+                    shape = CircleShape,
+                    clip = false
+                )
+                .clip(CircleShape)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(BrandTealDeep, BrandTeal)
+                    )
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = CircleShape,
-                        clip = false
-                    )
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(BrandTealDeep, BrandTeal)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = initial,
-                    color = Color.White,
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            }
-            // Edit foto badge (visual only)
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .shadow(
-                        elevation = 4.dp,
-                        shape = CircleShape,
-                        clip = false
-                    )
-                    .clip(CircleShape)
-                    .background(Color.White)
-                    .border(2.dp, Surface, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Edit foto",
-                    tint = BrandTeal,
-                    modifier = Modifier.size(14.dp)
-                )
-            }
+            Text(
+                text = initial,
+                color = Color.White,
+                fontSize = 40.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
         }
         Spacer(modifier = Modifier.height(14.dp))
         Text(
@@ -501,37 +453,6 @@ private fun LabeledField(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun TipRow(
-    icon: ImageVector,
-    text: String
-) {
-    Row(verticalAlignment = Alignment.Top) {
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .clip(CircleShape)
-                .background(BrandTealLight),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = BrandTeal,
-                modifier = Modifier.size(14.dp)
-            )
-        }
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = text,
-            fontSize = 13.sp,
-            color = TextPrimary,
-            lineHeight = 19.sp,
-            modifier = Modifier.padding(top = 4.dp)
-        )
     }
 }
 
